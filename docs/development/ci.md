@@ -6,6 +6,8 @@ pushes to `main`, and manual dispatches.
 
 ## Checks
 
+- **Web lint, types, tests and build** installs from `web/package-lock.json`
+  with `npm ci`, then checks ESLint, TypeScript, Vitest, and the Vite build.
 - **Build** checks the dependency lock, builds the Python source distribution
   and wheel, verifies both can create a database from their packaged migrations,
   and builds the Docker image. Python distributions are retained for seven days
@@ -16,8 +18,12 @@ pushes to `main`, and manual dispatches.
   workflow run, analyzes the code, and waits up to five minutes for the quality
   gate. A rejected gate fails the check, as does missing configuration.
 
-Build and Tests run in parallel. Dependencies are resolved from `uv.lock`, and
-third-party actions are pinned to verified commit hashes. The workflow grants
+SonarQube currently analyzes backend sources and Python coverage only; the web
+job validates the frontend independently, without uploading JS coverage.
+
+Web, Build, and Tests run in parallel. Dependencies are resolved from
+`web/package-lock.json` and `uv.lock`, and third-party actions are pinned to
+verified commit hashes. The workflow grants
 only read access to repository contents; it does not publish packages.
 
 ## Connect SonarQube Cloud
@@ -61,7 +67,8 @@ After the workflow is published and its checks have appeared, configure an
 active GitHub branch ruleset for `main` with:
 
 - Pull requests required, with one approval from another team member.
-- Required status checks: **Build**, **Tests**, and **SonarQube**.
+- Required status checks: **Web lint, types, tests and build**, **Build**,
+  **Tests**, and **SonarQube**.
 - Dismiss outdated approvals, require resolved review conversations, and require
   the branch to be up to date before merging.
 - Block force pushes and branch deletion, with no routine bypass actors.
@@ -69,12 +76,12 @@ active GitHub branch ruleset for `main` with:
 
 These settings are applied in GitHub, not enforced by this document. During the
 initial rollout, bootstrap the main-branch Sonar baseline before requiring its
-check, then verify a PR produces all three checks.
+check, then verify a PR produces all four checks.
 
 ## External contributions
 
 Fork PRs and Dependabot PRs do not normally receive the repository's Sonar token.
-Build and Tests still run; SonarQube fails explicitly instead of appearing green
+Web, Build, and Tests still run; SonarQube fails explicitly instead of appearing green
 without an analysis. For a reviewed external contribution, a maintainer can
 bring the exact reviewed changes to a repository branch and open a PR from
 there so the full workflow can run. Do not run fork code with repository secrets
@@ -89,6 +96,12 @@ uv run --locked coverage xml
 uv run --locked coverage report
 uv build --no-sources
 docker build --tag zellige:ci .
+cd web
+npm ci
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
 Generated coverage files, distributions, and scanner working files are ignored

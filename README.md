@@ -4,9 +4,10 @@ Zellige is an open-source, self-hosted conversation service. It keeps one
 provider-neutral conversation model while allowing different execution profiles
 for general chat, coding, research, and durable personal agents.
 
-This repository currently contains the server-side SQLite proof of concept. It
-is deliberately small: FastAPI, an authenticated HTTP API, a single
-daemon-owned database, and content-addressed artifact storage.
+This repository contains the server-side SQLite proof of concept and a small
+technical web console. The server remains deliberately small: FastAPI, an
+authenticated HTTP API, a single daemon-owned database, and content-addressed
+artifact storage.
 
 ## What the PoC proves
 
@@ -52,6 +53,47 @@ curl -sS http://127.0.0.1:8787/v1/conversations \
   --data '{"title":"First conversation"}'
 ```
 
+## Try the web console
+
+Keep the backend running as above. In another terminal, with Node.js 24 and npm:
+
+```sh
+cd web
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Vite forwards `/health` and `/v1` to the local
+backend at `127.0.0.1:8787`; the browser never opens the SQLite file. Enter the
+same `ZELLIGE_API_TOKEN` in the password field, create a conversation, add a
+message, refresh its history, create a runtime profile and queued run, and read
+the outbox manually. Existing conversations can be opened by conversation and
+branch IDs. The console keeps the token, those IDs, and the change cursor in
+this tab's `sessionStorage`, so a reload restores the server's canonical head.
+Clear the token or close the tab when finished, especially on shared devices.
+
+The console is not a hosted product UI: there is no login, conversation list,
+runner, generated assistant reply, or automatic sync. A concurrent append
+returns 409, refreshes history, keeps the draft, and never retries it silently.
+The backend has no run-status read endpoint; the UI can show only the initial
+`queued` result returned by `POST /v1/runs`.
+
+Web checks:
+
+```sh
+cd web
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+`web/src/api/` owns HTTP contracts and bearer/error handling;
+`web/src/features/useConsole.ts` coordinates the visible flows;
+`web/src/components/` renders the conversation and technical panels;
+`web/src/storage/session.ts` owns tab-scoped restoration. Styling uses Tailwind
+through the Vite plugin, without a separate CSS build process.
+
 ## Run with Docker Compose
 
 ```sh
@@ -76,8 +118,9 @@ integrity, content-addressed artifacts, WAL, and persistence after daemon restar
 
 ## Continuous integration
 
-PRs to `main` and pushes to `main` run package/Docker builds and tests with
-coverage, followed by SonarQube Cloud analysis and its quality gate. Sonar
+PRs to `main` and pushes to `main` run package/Docker builds, backend tests with
+coverage, and web lint/types/tests/build, followed by SonarQube Cloud analysis
+and its quality gate. Sonar
 requires a free OSS project and repository variables/secrets before its check
 can pass. Setup, required checks, and local commands are documented in
 [`docs/development/ci.md`](docs/development/ci.md).
