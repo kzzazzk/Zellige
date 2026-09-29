@@ -1,0 +1,337 @@
+{
+  "$defs": {
+    "ActivityPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "started",
+            "progress",
+            "completed",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "const": "activity",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "status",
+        "details"
+      ],
+      "title": "ActivityPayload",
+      "type": "object"
+    },
+    "ArtifactBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alt"
+        },
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "image",
+            "file",
+            "audio",
+            "video"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "artifact_id"
+      ],
+      "title": "ArtifactBlock",
+      "type": "object"
+    },
+    "ArtifactPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metadata"
+        },
+        "type": {
+          "const": "artifact",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "artifact_id",
+        "label"
+      ],
+      "title": "ArtifactPayload",
+      "type": "object"
+    },
+    "MessagePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "audio": "#/$defs/ArtifactBlock",
+                "file": "#/$defs/ArtifactBlock",
+                "image": "#/$defs/ArtifactBlock",
+                "text": "#/$defs/TextBlock",
+                "video": "#/$defs/ArtifactBlock"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TextBlock"
+              },
+              {
+                "$ref": "#/$defs/ArtifactBlock"
+              }
+            ]
+          },
+          "title": "Content",
+          "type": "array"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant",
+            "system"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "type": {
+          "const": "message",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "role",
+        "content"
+      ],
+      "title": "MessagePayload",
+      "type": "object"
+    },
+    "TextBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "title": "TextBlock",
+      "type": "object"
+    },
+    "ToolCallPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "call_id": {
+          "minLength": 1,
+          "title": "Call Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "const": "tool_call",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "call_id",
+        "name",
+        "arguments"
+      ],
+      "title": "ToolCallPayload",
+      "type": "object"
+    },
+    "ToolError": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ToolError",
+      "type": "object"
+    },
+    "ToolResultPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "call_id": {
+          "minLength": 1,
+          "title": "Call Id",
+          "type": "string"
+        },
+        "content": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "audio": "#/$defs/ArtifactBlock",
+                "file": "#/$defs/ArtifactBlock",
+                "image": "#/$defs/ArtifactBlock",
+                "text": "#/$defs/TextBlock",
+                "video": "#/$defs/ArtifactBlock"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TextBlock"
+              },
+              {
+                "$ref": "#/$defs/ArtifactBlock"
+              }
+            ]
+          },
+          "title": "Content",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "type": {
+          "const": "tool_result",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "call_id",
+        "status",
+        "content"
+      ],
+      "title": "ToolResultPayload",
+      "type": "object"
+    }
+  },
+  "$id": "https://zellige.dev/schemas/item-payload/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "discriminator": {
+    "mapping": {
+      "activity": "#/$defs/ActivityPayload",
+      "artifact": "#/$defs/ArtifactPayload",
+      "message": "#/$defs/MessagePayload",
+      "tool_call": "#/$defs/ToolCallPayload",
+      "tool_result": "#/$defs/ToolResultPayload"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/MessagePayload"
+    },
+    {
+      "$ref": "#/$defs/ToolCallPayload"
+    },
+    {
+      "$ref": "#/$defs/ToolResultPayload"
+    },
+    {
+      "$ref": "#/$defs/ActivityPayload"
+    },
+    {
+      "$ref": "#/$defs/ArtifactPayload"
+    }
+  ],
+  "title": "Zellige item payload v1"
+}

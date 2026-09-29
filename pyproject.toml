@@ -1,0 +1,44 @@
+[project]
+name = "zellige"
+version = "0.1.0"
+description = "Portable, self-hosted conversation daemon"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+zellige = "zellige.server:main"
+zellige-export-schemas = "zellige.api_models:export_schemas"
+
+[tool.unittest]
+start-directory = "tests"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.16.2,<8",
+    "httpx2>=2.13.1",
+]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["zellige"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zellige"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "zellige/migrations"
+"schemas" = "zellige/schemas"

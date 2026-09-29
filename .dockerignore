@@ -1,0 +1,13 @@
+.git
+.env
+.venv
+__pycache__
+*.pyc
+data
+tests
+.coverage
+.coverage.*
+coverage.xml
+htmlcov
+.scannerwork
+dist
