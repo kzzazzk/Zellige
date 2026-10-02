@@ -1,0 +1,159 @@
+@font-face { font-family: Onest; src: url("/fonts/onest-variable.ttf") format("truetype"); font-style: normal; font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Cormorant Garamond"; src: url("/fonts/cormorant-garamond-variable.ttf") format("truetype"); font-style: normal; font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Cormorant Garamond"; src: url("/fonts/cormorant-garamond-italic-variable.ttf") format("truetype"); font-style: italic; font-weight: 300 700; font-display: swap; }
+:root {
+  --ivory: #f8f6ef; --ink: #12334d; --blue: #0f3b6e; --teal: #0a5057;
+  --gold: #a17a3e; --line: #d4cdbf; --muted: #536773; --paper: #ede9dd;
+  --gutter: clamp(24px, 4.5vw, 80px); --serif: "Cormorant Garamond", Georgia, serif;
+  font-family: Onest, ui-sans-serif, system-ui, sans-serif; color: var(--ink);
+  background: var(--ivory); color-scheme: light; font-synthesis: none;
+  scroll-behavior: smooth; scrollbar-color: var(--teal) var(--ivory);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; text-decoration: none; text-underline-offset: 6px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 7px; }
+::selection { color: var(--ivory); background: var(--teal); }
+p, h1, h2, figure { margin: 0; }
+h1, h2 { font-family: var(--serif); font-weight: 500; }
+em { font-weight: 400; }
+svg { flex-shrink: 0; }
+.site-header { height: 104px; margin-inline: var(--gutter); display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; gap: 12px; align-items: center; }
+.brand img { width: 48px; }
+.brand span, .footer-brand { font-weight: 650; font-size: 34px; letter-spacing: -.055em; }
+nav { display: flex; gap: 42px; margin-left: auto; }
+nav a { font-size: 13px; padding: 14px 0; }
+nav a:hover, .back-top:hover { text-decoration: underline; }
+.project-status { color: var(--muted); font-size: 11px; margin-left: 38px; display: flex; align-items: center; gap: 10px; }
+.project-status::before { content: ""; width: 5px; height: 5px; background: var(--gold); transform: rotate(45deg); }
+.hero { position: relative; display: grid; grid-template-columns: 1.02fr 1fr; margin: 28px var(--gutter) 0; column-gap: 4%; }
+.hero-copy { padding: 48px 0 30px; }
+.eyebrow { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .19em; line-height: 1.8; }
+h1 { font-size: clamp(80px, 7.85vw, 126px); line-height: .88; letter-spacing: -.035em; margin-top: 32px; }
+h1 em { color: var(--teal); }
+.hero-description { margin-top: 34px; color: var(--muted); font-size: 14px; line-height: 1.85; }
+.text-link { display: inline-flex; align-items: center; gap: 30px; margin-top: 30px; padding-block: 10px; border-bottom: 1px solid var(--gold); font-size: 12px; }
+.text-link svg { transition: transform .2s ease; }
+.text-link:hover svg { transform: translateY(4px); }
+.hero-mosaic { position: relative; min-height: 665px; background: var(--blue); }
+.mosaic-surface { position: absolute; inset: 0; background: url("/images/zellige-mosaic.png") center / max(100%, 780px) no-repeat; }
+.mosaic-notch { position: absolute; top: 0; left: 0; width: 78px; height: 78px; background: var(--ivory); display: grid; place-items: center; }
+.mosaic-notch svg { width: 38px; stroke: var(--gold); stroke-width: 1; }
+.hero-mosaic figcaption { position: absolute; bottom: 0; right: 0; display: flex; align-items: center; gap: 24px; padding: 24px 0 0 28px; background: var(--ivory); font-size: 11px; line-height: 1.5; }
+.hero-mosaic figcaption em { font-family: var(--serif); font-size: 23px; }
+.caption-rule { width: 48px; height: 1px; background: var(--gold); }
+.hero-footnote { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding-block: 28px; border-bottom: 1px solid var(--line); font-size: 10px; line-height: 1.6; color: var(--muted); }
+.hero-footnote > span:last-child { text-align: right; }
+.small-star { width: 25px; height: 25px; color: var(--gold); }
+.manifesto { display: grid; grid-template-columns: 1fr 4fr; column-gap: 7%; padding: 112px var(--gutter) 108px; scroll-margin-top: 24px; }
+.section-heading { display: flex; align-items: center; gap: 16px; padding-top: 17px; white-space: nowrap; }
+.section-heading p { font-size: 11px; }
+.section-line { height: 1px; width: 32px; background: var(--gold); }
+.manifesto h2 { font-size: clamp(40px, 4.6vw, 70px); line-height: 1.03; letter-spacing: -.03em; }
+.manifesto h2 em { color: var(--teal); }
+.manifesto-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 36px; max-width: 760px; }
+.manifesto-columns p { color: var(--muted); font-size: 14px; line-height: 1.85; }
+.pieces-section { display: grid; grid-template-columns: 1fr 1fr; background: var(--paper); }
+.tile-study { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 42px; padding: 96px 70px; border-right: 1px solid var(--line); overflow: hidden; }
+.study-frame { width: min(72%, 340px); aspect-ratio: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; transform: rotate(-12deg); }
+.study-tile { background-image: url("/images/zellige-mosaic.png"); background-size: 680px; border: 1px solid #ad8b56; box-shadow: 2px 5px 8px rgb(18 51 77 / .14); }
+.study-tile-blue { background-position: 0 0; transform: translate(-12px, -12px); }
+.study-tile-ivory { background-position: -170px 0; }
+.study-tile-teal { background-position: 0 -170px; }
+.study-tile-pattern { background-position: -170px -170px; transform: translate(12px, 12px); }
+.tile-study > p { font-size: 11px; text-align: center; line-height: 1.8; color: var(--muted); }
+.tile-study > p em { font: italic 24px/1.3 var(--serif); color: var(--ink); }
+.pieces-copy { padding: 76px var(--gutter) 72px 64px; }
+.pieces-copy h2 { font-size: clamp(40px, 3.9vw, 60px); letter-spacing: -.025em; line-height: 1; margin-top: 22px; }
+.principles { margin-top: 34px; }
+details { border-bottom: 1px solid #c8c2b4; }
+summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; font-size: 12px; line-height: 1.6; cursor: pointer; padding: 22px 0; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary:hover { color: var(--teal); }
+.detail-symbol { width: 12px; height: 12px; position: relative; flex: 0 0 12px; }
+.detail-symbol::before, .detail-symbol::after { content: ""; position: absolute; background: currentColor; }
+.detail-symbol::before { top: 5px; width: 12px; height: 1px; }
+.detail-symbol::after { left: 5px; width: 1px; height: 12px; }
+details[open] .detail-symbol::after { display: none; }
+details p { color: var(--muted); font-size: 13px; line-height: 1.8; padding-bottom: 22px; max-width: 50ch; }
+.project-section { background: var(--blue) url("/images/zellige-mosaic.png") center / cover no-repeat; padding: 84px var(--gutter); scroll-margin-top: 24px; }
+.project-note { max-width: 760px; margin: auto; padding: 48px 80px 56px; text-align: center; background: var(--ivory); clip-path: polygon(24px 0, calc(100% - 24px) 0, calc(100% - 24px) 24px, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 24px calc(100% - 24px), 0 calc(100% - 24px), 0 24px, 24px 24px); }
+.project-note > img { width: 76px; margin: 0 auto 24px; }
+.project-note h2 { font-size: clamp(50px, 5vw, 72px); line-height: .98; letter-spacing: -.03em; margin-top: 24px; }
+.project-note > p:not(.eyebrow) { font-size: 13px; line-height: 1.9; max-width: 440px; margin: 28px auto; color: var(--muted); }
+.project-signature { font-family: var(--serif); font-size: 21px; font-style: italic; }
+.site-footer { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-inline: var(--gutter); min-height: 134px; }
+.footer-brand { display: inline-flex; align-items: center; gap: 12px; font-size: 32px; }
+.footer-star { width: 21px; height: 21px; color: var(--gold); }
+.site-footer p { font-size: 11px; color: var(--muted); }
+.back-top { display: inline-flex; align-items: center; gap: 20px; font-size: 11px; padding-block: 14px; }
+.skip-link { position: fixed; top: 10px; left: 10px; z-index: 10; padding: 14px; background: var(--ivory); color: var(--ink); transform: translateY(-200%); }
+.skip-link:focus { transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy { animation: arrive .7s ease-out both; }
+  @keyframes arrive { from { opacity: .55; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+}
+@media (min-width: 1700px) { .hero { column-gap: 8%; } .hero-copy { padding-block: 76px; } .hero-mosaic { min-height: 800px; } .mosaic-surface { background-size: max(100%, 940px); } }
+@media (max-width: 1050px) {
+  .project-status { display: none; }
+  .hero { column-gap: 24px; }
+  h1 { font-size: 9vw; }
+  .hero-mosaic { min-height: 610px; }
+  .mosaic-surface { background-size: max(100%, 640px); }
+  .hero-copy { padding-top: 32px; }
+  .desktop-break { display: none; }
+  .hero-description { max-width: 330px; }
+  .manifesto { grid-template-columns: 1fr; row-gap: 24px; padding-block: 72px; }
+  .section-heading { padding: 0; }
+  .pieces-copy { padding: 56px 32px; }
+  .tile-study { padding: 70px 36px; }
+  .study-frame { width: 85%; }
+}
+@media (max-width: 700px) {
+  .site-header { height: 84px; gap: 16px; }
+  .brand { gap: 8px; }
+  .brand img { width: 36px; }
+  .brand span { font-size: 27px; }
+  nav { gap: 20px; }
+  nav a { font-size: 11px; }
+  .hero { grid-template-columns: 1fr; margin-top: 0; }
+  .hero-copy { padding: 38px 0 34px; }
+  .eyebrow { font-size: 9px; letter-spacing: .16em; }
+  h1 { font-size: clamp(76px, 19vw, 118px); margin-top: 24px; line-height: .87; }
+  .hero-description { margin-top: 28px; font-size: 13px; max-width: 340px; }
+  .text-link { margin-top: 18px; }
+  .hero-mosaic { min-height: 340px; }
+  .mosaic-surface { background-size: max(100%, 540px); }
+  .mosaic-notch { width: 48px; height: 48px; }
+  .mosaic-notch svg { width: 26px; }
+  .hero-mosaic figcaption { padding: 18px 0 0 22px; gap: 16px; }
+  .caption-rule { width: 24px; }
+  .hero-footnote { padding-block: 22px; font-size: 9px; gap: 12px; }
+  .manifesto { padding-block: 64px; }
+  .manifesto h2 { font-size: 43px; }
+  .manifesto h2 br { display: none; }
+  .manifesto-columns { grid-template-columns: 1fr; gap: 18px; margin-top: 24px; }
+  .manifesto-columns p { font-size: 13px; }
+  .pieces-section { grid-template-columns: 1fr; }
+  .tile-study { padding: 68px 52px 52px; border-right: 0; border-bottom: 1px solid var(--line); gap: 40px; }
+  .study-frame { width: min(75%, 270px); }
+  .pieces-copy { padding: 44px var(--gutter) 56px; }
+  .pieces-copy h2 { font-size: 48px; }
+  .principles { margin-top: 20px; }
+  summary { font-size: 12px; gap: 16px; }
+  .project-section { padding: 44px 16px; }
+  .project-note { padding: 40px 30px 44px; }
+  .project-note h2 { font-size: 53px; }
+  .project-note > img { width: 64px; }
+  .project-note > p:not(.eyebrow) { font-size: 12px; }
+  .project-note .eyebrow { max-width: 200px; margin-inline: auto; }
+  .project-signature { font-size: 19px; }
+  .site-footer { flex-wrap: wrap; gap: 12px; padding-block: 30px; }
+  .site-footer p { order: 3; width: 100%; font-size: 10px; }
+  .footer-brand { font-size: 29px; }
+  .back-top { margin-left: auto; }
+}
+@media (max-width: 359px) { nav { gap: 12px; } .brand span { font-size: 24px; } .brand img { width: 28px; } h1 { font-size: 72px; } .hero-footnote .small-star { display: none; } }
+@media (prefers-reduced-motion: reduce) { :root { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }

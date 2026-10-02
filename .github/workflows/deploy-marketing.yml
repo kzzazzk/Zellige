@@ -1,0 +1,56 @@
+name: Deploy marketing to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketing-production
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish the public landing
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: marketing-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Verify the public deployment boundary
+        run: node --test tests/marketing-build.test.mjs
+      - name: Package the static landing
+        run: node deploy/build-marketing.mjs
+      - name: Deploy the packaged landing to production
+        working-directory: .output/marketing
+        env:
+          # Secrets keep deployment identifiers out of source and masked in logs.
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TELEMETRY_DISABLED: "1"
+        run: |
+          for setting in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
+            if [ -z "${!setting}" ]; then
+              echo "::error::Missing $setting. See docs/deployment/vercel.md."
+              exit 1
+            fi
+          done
+          deployment_log="$(mktemp "${RUNNER_TEMP}/zellige-deploy.XXXXXX")"
+          trap 'rm -f "$deployment_log"' EXIT
+          if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes >"$deployment_log" 2>&1; then
+            echo "::error::Deployment failed. Check the private Vercel dashboard and Actions secrets; raw CLI output is not published."
+            exit 1
+          fi
+          echo "Production landing deployed."

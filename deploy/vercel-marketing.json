@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "routes": [
+    {
+      "src": "/.*",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "X-Frame-Options": "DENY",
+        "Content-Security-Policy": "default-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+      },
+      "continue": true
+    },
+    { "src": "^/$", "dest": "/index.html" },
+    { "handle": "filesystem" }
+  ]
+}

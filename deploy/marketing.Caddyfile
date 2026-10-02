@@ -1,0 +1,16 @@
+{
+    admin off
+    auto_https off
+}
+:8080 {
+    root * /srv
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Frame-Options DENY
+        Content-Security-Policy "default-src 'self'; img-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+    }
+    respond /health "ok" 200
+    file_server
+}
