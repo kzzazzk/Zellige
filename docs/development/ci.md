@@ -18,13 +18,21 @@ pushes to `main`, and manual dispatches.
   workflow run, analyzes the code, and waits up to five minutes for the quality
   gate. A rejected gate fails the check, as does missing configuration.
 
-SonarQube currently analyzes backend sources and Python coverage only; the web
-job validates the frontend independently, without uploading JS coverage.
+SonarQube analyzes backend sources and frontend TypeScript/TSX. Frontend tests
+and `web/src/test/` support are excluded from sources and included only as tests;
+all Python tests remain in test scope. Only Python coverage is imported. There
+is no JS/TS coverage report: uncovered frontend code can fail the Sonar way
+gate. Address findings and add genuine coverage later; do not bypass the gate
+with blanket frontend coverage exclusions.
 
 Web, Build, and Tests run in parallel. Dependencies are resolved from
 `web/package-lock.json` and `uv.lock`, and third-party actions are pinned to
 verified commit hashes. The workflow grants
 only read access to repository contents; it does not publish packages.
+Newer runs cancel in-progress validation for the same branch or PR.
+Vercel's native GitHub integration handles frontend deployments independently;
+Deployment Checks require all four GitHub checks before production promotion.
+Distribution and Python coverage artifacts are retained for seven days.
 
 ## Connect SonarQube Cloud
 
@@ -107,10 +115,10 @@ npm run build
 Generated coverage files, distributions, and scanner working files are ignored
 by Git.
 
-## Future delivery
+## Delivery
 
-CI currently validates and retains artifacts only. Nightly publication,
-version-tag releases, registry publishing, and automatic deployment are not
-enabled. Release publishing can be added later as a separate workflow. If the
-product gains a website, its deployment can have its own workflow after the
-relevant CI checks, without tying that deployment to backend releases.
+Vercel hosts the static frontend at `zellige.dev`, with automatic branch/PR
+previews and production Deployment Checks for all four CI checks, including
+SonarQube. Cloudflare is registrar/DNS only. See [deployment setup and
+operations](deployment.md) for manual onboarding. Backend deployment, nightly
+publication, registry publishing, and version-tag releases remain disabled.

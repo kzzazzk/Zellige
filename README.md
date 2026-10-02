@@ -125,7 +125,12 @@ requires a free OSS project and repository variables/secrets before its check
 can pass. Setup, required checks, and local commands are documented in
 [`docs/development/ci.md`](docs/development/ci.md).
 
-Release publishing and automatic deployment are not enabled yet.
+The static frontend is hosted on Vercel through its native GitHub integration.
+Vercel Deployment Checks require all four CI checks before production is
+promoted to `zellige.dev`; Cloudflare is registrar/DNS only. See
+[deployment setup and operations](docs/development/deployment.md).
+The hosted console has no backend: do not enter real API tokens.
+Backend deployment and release publishing remain disabled.
 
 ## Scope
 
