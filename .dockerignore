@@ -12,6 +12,7 @@ htmlcov
 .scannerwork
 dist
 web/node_modules
+web/scripts/openapi/node_modules
 web/dist
 web/coverage
 .impeccable

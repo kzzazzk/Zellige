@@ -3,6 +3,7 @@ FROM ghcr.io/astral-sh/uv:0.11.8 AS uv
 FROM node:24-alpine AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
+COPY web/scripts/openapi/package.json ./scripts/openapi/package.json
 RUN npm ci
 COPY web/ ./
 RUN npm run build
