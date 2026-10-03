@@ -129,6 +129,44 @@ describe("Conversation app", () => {
     ).toHaveLength(2);
   });
 
+  it("keeps a failed append draft and prevents duplicate sends while pending", async () => {
+    const api = apiFixture();
+    render(<App />);
+    await connect();
+    await send("Primero");
+    const path = "/v1/conversations/conv-1/branches/branch-1/items";
+    api.failNext("POST", path);
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "Borrador" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar mensaje" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("Borrador");
+    expect(api.items).toHaveLength(1);
+    const deferred = api.deferNext("POST", path);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar mensaje" }));
+    await deferred.requested;
+    fireEvent.click(screen.getByRole("button", { name: "Guardar mensaje" }));
+    expect(api.items).toHaveLength(1);
+    deferred.release();
+    await waitFor(() => expect(screen.getByLabelText("Mensaje")).toHaveValue(""));
+    expect(api.items).toHaveLength(2);
+    expect(api.fetchMock.mock.calls.filter(([request]) => request === path)).toHaveLength(3);
+  });
+
+  it("does not preserve a sent draft when a follow-up read fails", async () => {
+    const api = apiFixture();
+    render(<App />);
+    await connect();
+    await send("Primero");
+    api.failNext("GET", "/v1/conversations/conv-1/branches/branch-1/history");
+    await send("Guardado");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Mensaje guardado.");
+    expect(api.items).toHaveLength(2);
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("");
+    expect(screen.getByText("Guardado")).toBeInTheDocument();
+  });
+
   it("edits on a new branch and keeps the original message unchanged", async () => {
     const api = apiFixture();
     render(<App />);
