@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import json
-import os
 import sqlite3
 import uuid
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from .application.artifacts import StoreArtifact
 from .database import Database, now_us
 from .payloads import PayloadError, validate_payload
 
@@ -52,10 +52,17 @@ class ServiceError(Exception):
 
 
 class ZelligeService:
-    def __init__(self, database: Database, blob_dir: Path):
+    def __init__(
+        self, database: Database, blob_dir: Path, *, artifacts: StoreArtifact | None = None
+    ):
         self.database = database
         self.blob_dir = blob_dir
-        self.blob_dir.mkdir(parents=True, exist_ok=True)
+        if artifacts is None:
+            # Compatibility for callers constructing the legacy facade directly.
+            from .bootstrap import build_artifact_use_case
+
+            artifacts = build_artifact_use_case(database, blob_dir)
+        self.artifacts = artifacts
 
     @staticmethod
     def _change(
@@ -503,34 +510,4 @@ class ZelligeService:
         return {"changes": changes, "next_cursor": next_cursor, "has_more": has_more}
 
     def put_artifact(self, content: bytes, media_type: str) -> dict[str, Any]:
-        digest = hashlib.sha256(content).hexdigest()
-        artifact_id = f"artifact_sha256_{digest}"
-        relative = Path("sha256") / digest[:2] / digest[2:]
-        target = self.blob_dir / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if not target.exists():
-            temporary = target.with_name(
-                f".{target.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp"
-            )
-            temporary.write_bytes(content)
-            os.replace(temporary, target)
-        timestamp = now_us()
-        artifact = {
-            "id": artifact_id,
-            "sha256": digest,
-            "size_bytes": len(content),
-            "media_type": media_type or "application/octet-stream",
-            "storage_key": relative.as_posix(),
-            "created_at": timestamp,
-        }
-        with self.database.transaction(immediate=True) as connection:
-            inserted = connection.execute(
-                "INSERT OR IGNORE INTO artifacts VALUES (?, ?, ?, ?, ?, ?)",
-                tuple(artifact.values()),
-            ).rowcount
-            stored = connection.execute("SELECT * FROM artifacts WHERE sha256 = ?", (digest,)).fetchone()
-            assert stored is not None
-            artifact = _row(stored)
-            if inserted:
-                self._change(connection, "artifact", artifact["id"], artifact)
-        return artifact
+        return asdict(self.artifacts.execute(content, media_type))

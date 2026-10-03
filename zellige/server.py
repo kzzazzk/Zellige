@@ -38,6 +38,7 @@ from .api_models import (
     RuntimeProfileListResponse,
     UpdateConversationRequest,
 )
+from .bootstrap import build_artifact_use_case
 from .database import Database
 from .service import ServiceError, ZelligeService
 
@@ -478,7 +479,10 @@ def build_app(data_dir: Path, token: str, web_dir: Path | None = None) -> FastAP
         else project_root / "migrations"
     )
     database = Database(data_dir / "zellige.sqlite3", migrations_dir)
-    service = ZelligeService(database, data_dir / "blobs")
+    blob_dir = data_dir / "blobs"
+    service = ZelligeService(
+        database, blob_dir, artifacts=build_artifact_use_case(database, blob_dir)
+    )
     app = create_app(service, token)
     assets = web_dir if web_dir is not None else project_root / "web" / "dist"
     if (assets / "index.html").is_file():
