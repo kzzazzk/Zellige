@@ -10,19 +10,19 @@ import type { Failure, Thread } from "./types";
 
 export function useWorkspaceSession(saved: SavedSession, thread: Thread | null, cursor: number,
   onRestore: (page: ConversationPage, profiles: Profile[], thread: Thread | null) => void,
-  onFailure: (failure: Failure) => void, onRelease: () => void) {
+  onFailure: (failure: Failure) => void, onRelease: () => void, routed = false, pending = false) {
   const [token, setToken] = useState(saved.token);
   const [connected, setConnected] = useState(false);
   const client = createClient(() => token);
   useEffect(() => {
-    if (token && !connected) return;
+    if (pending || (token && !connected)) return;
     saveSession({
       token,
       conversationId: thread?.conversation.id ?? "",
       branchId: thread?.branch.id ?? "",
       cursor,
     });
-  }, [token, connected, thread?.conversation.id, thread?.branch.id, cursor]);
+  }, [token, connected, thread?.conversation.id, thread?.branch.id, cursor, pending]);
 
   useEffect(() => {
     if (!saved.token) return;
@@ -31,7 +31,7 @@ export function useWorkspaceSession(saved: SavedSession, thread: Thread | null, 
     Promise.all([listConversations(initialClient), listProfiles(initialClient)])
       .then(async ([conversations, profileList]) => {
         let restored: Thread | null = null;
-        if (saved.conversationId) {
+        if (!routed && saved.conversationId) {
           try {
             restored = await loadThread(
               initialClient,
@@ -58,7 +58,7 @@ export function useWorkspaceSession(saved: SavedSession, thread: Thread | null, 
     return () => {
       cancelled = true;
     };
-  }, [saved, onRestore, onFailure, onRelease]);
+  }, [saved, onRestore, onFailure, onRelease, routed]);
 
 
   return { token, setToken, connected, setConnected, client };
