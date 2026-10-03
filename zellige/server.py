@@ -13,6 +13,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .api_models import (
     AppendItemRequest,
+    ClaimRunRequest,
+    ClaimRunResponse,
+    FinishRunRequest,
     Artifact,
     Branch,
     BranchListResponse,
@@ -254,6 +257,26 @@ def create_app(service: ZelligeService, token: str) -> FastAPI:
     )
     def list_runs(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
         return service.list_runs(conversation_id)
+
+    @app.post(
+        "/v1/runner/runs/claim", response_model=ClaimRunResponse,
+        operation_id="claimRun", tags=["execution"],
+        summary="Atomically claim the oldest queued run for a harness",
+        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 413: TOO_LARGE},
+    )
+    def claim_run(body: ClaimRunRequest, service: Service, _authorization: Authorization) -> dict[str, Any]:
+        return service.claim_run(body.harness)
+
+    @app.post(
+        "/v1/runner/runs/{run_id}/finish", response_model=Run,
+        operation_id="finishRun", tags=["execution"],
+        summary="Finish a running run and publish its result",
+        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 404: NOT_FOUND, 409: CONFLICT, 413: TOO_LARGE},
+    )
+    def finish_run(
+        run_id: str, body: FinishRunRequest, service: Service, _authorization: Authorization,
+    ) -> dict[str, Any]:
+        return service.finish_run(run_id, body.model_dump(mode="json"))
 
     @app.post(
         "/v1/conversations",
