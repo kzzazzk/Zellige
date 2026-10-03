@@ -3,93 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f8f6ef" />
-    <meta name="description" content="Zellige. Un proyecto abierto para reunir conversaciones, herramientas y agentes en un espacio propio. Distintas piezas, una misma historia." />
-    <link rel="icon" type="image/png" href="/brand/zellige-emblem.png" />
-    <link rel="preload" href="/fonts/cormorant-garamond-variable.ttf" as="font" type="font/ttf" crossorigin />
-    <link rel="preload" href="/images/zellige-mosaic.png" as="image" />
-    <link rel="stylesheet" href="/styles.css" />
-    <title>Zellige — Cada idea encuentra su lugar</title>
+    <meta name="theme-color" content="#f8f6ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#09151d" media="(prefers-color-scheme: dark)" />
+    <script src="/theme.js"></script>
+    <script src="/locale.js"></script>
+    <!--head-->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" href="/fonts/onest-variable.ttf" as="font" type="font/ttf" crossorigin />
   </head>
   <body>
-    <a class="skip-link" href="#contenido">Ir al contenido</a>
-    <header class="site-header">
-      <a class="brand" href="#inicio" aria-label="Zellige, inicio">
-        <img src="/brand/zellige-emblem.png" width="48" height="48" alt="" />
-        <span>zellige</span>
-      </a>
-      <nav aria-label="Principal">
-        <a href="#mosaico">La idea</a>
-        <a href="#proyecto">El proyecto</a>
-      </nav>
-      <span class="project-status">En construcción</span>
-    </header>
-    <main id="contenido">
-      <section class="hero" id="inicio" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow">Inteligencia, pieza a pieza</p>
-          <h1 id="hero-title">Cada idea<br />encuentra<br /><em>su lugar.</em></h1>
-          <p class="hero-description">Conversaciones, herramientas y agentes.<br class="desktop-break" /> Zellige nace para reunirlos en un espacio<br class="desktop-break" /> abierto que puedas hacer tuyo.</p>
-          <a class="text-link" href="#mosaico">Descubre la idea <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M12 4v16m-6-6 6 6 6-6" /></svg></a>
-        </div>
-        <figure class="hero-mosaic">
-          <div class="mosaic-surface" role="img" aria-label="Mosaico de estrellas y rombos de cerámica azul, teal y marfil, entrelazados por finas juntas doradas."></div>
-          <div class="mosaic-notch" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none"><path d="m50 2 14 14h20v20l14 14-14 14v20H64L50 98 36 84H16V64L2 50l14-14V16h20Z" /><path d="m50 17 11 22 22 11-22 11-11 22-11-22-22-11 22-11Z" /></svg></div>
-          <figcaption><span>Del patrón<br /><em>a la posibilidad.</em></span><span class="caption-rule" aria-hidden="true"></span></figcaption>
-        </figure>
-        <div class="hero-footnote"><span>Una pieza tiene forma.<br />Juntas, tienen sentido.</span><svg class="small-star" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" aria-hidden="true"><path d="m50 2 14 14h20v20l14 14-14 14v20H64L50 98 36 84H16V64L2 50l14-14V16h20Z" /></svg><span>Abierto por naturaleza.<br />Propio por elección.</span></div>
-      </section>
-
-      <section class="manifesto" id="mosaico" aria-labelledby="manifesto-title">
-        <div class="section-heading"><span class="section-line" aria-hidden="true"></span><p>El arte de unir</p></div>
-        <div class="manifesto-body">
-          <h2 id="manifesto-title">El valor no está en una sola pieza.<br /> Está en <em>cómo encajan.</em></h2>
-          <div class="manifesto-columns">
-            <p>Del zellige nos inspira una idea sencilla: formas diferentes pueden construir algo que ninguna conseguiría por sí sola.</p>
-            <p>La llevamos a tu espacio digital. Hablar, crear, investigar, organizar. Distintas formas de pensar, sin empezar tu historia de nuevo cada vez.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="pieces-section" aria-labelledby="pieces-title">
-        <div class="tile-study" aria-hidden="true">
-          <div class="study-frame"><div class="study-tile study-tile-blue"></div><div class="study-tile study-tile-ivory"></div><div class="study-tile study-tile-teal"></div><div class="study-tile study-tile-pattern"></div></div>
-          <p>La forma cambia.<br /><em>Lo que te une, permanece.</em></p>
-        </div>
-        <div class="pieces-copy">
-          <p class="eyebrow">Pensado para permanecer</p>
-          <h2 id="pieces-title">Más caminos.<br /><em>La misma historia.</em></h2>
-          <div class="principles">
-            <details open>
-              <summary>Tu conversación, no la de un proveedor.<span class="detail-symbol" aria-hidden="true"></span></summary>
-              <p>La conversación es el centro. Los modelos y herramientas pueden cambiar sin llevarse por delante lo que has construido.</p>
-            </details>
-            <details>
-              <summary>Explorar sin borrar el camino.<span class="detail-symbol" aria-hidden="true"></span></summary>
-              <p>Las ramas permiten seguir una idea en otra dirección y conservar el hilo del que partiste. Cambiar de opinión también forma parte del proceso.</p>
-            </details>
-            <details>
-              <summary>Un espacio que puedes hacer tuyo.<span class="detail-symbol" aria-hidden="true"></span></summary>
-              <p>Un proyecto abierto y autoalojado. El servidor guarda tu historia; las interfaces son distintas maneras de entrar en ella.</p>
-            </details>
-          </div>
-        </div>
-      </section>
-
-      <section class="project-section" id="proyecto" aria-labelledby="project-title">
-        <div class="project-note">
-          <img src="/brand/zellige-emblem.png" width="76" height="76" alt="" loading="lazy" decoding="async" />
-          <p class="eyebrow">Estamos poniendo las primeras piezas</p>
-          <h2 id="project-title">Algo propio.<br /><em>Algo en común.</em></h2>
-          <p>Zellige está en desarrollo. Hoy construimos la base para guardar conversaciones y explorar sus ramas. La ejecución de agentes todavía está por llegar.</p>
-          <span class="project-signature">Con calma. Con intención. Pieza a pieza.</span>
-        </div>
-      </section>
-    </main>
-    <footer class="site-footer">
-      <a class="footer-brand" href="#inicio" aria-label="Zellige, volver al inicio">zellige<svg class="footer-star" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" aria-hidden="true"><path d="m50 2 14 14h20v20l14 14-14 14v20H64L50 98 36 84H16V64L2 50l14-14V16h20Z" /></svg></a>
-      <p>Distintas piezas. Una misma historia.</p>
-      <a class="back-top" href="#inicio">Volver arriba <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M12 20V4m-6 6 6-6 6 6" /></svg></a>
-    </footer>
+    <div id="root"><!--app--></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -21,6 +21,12 @@ export type Run = {
   input_head_item_id: string | null;
   runtime_profile_version_id: string;
   context_pack_version_ids: string[];
+  created_at: number;
+};
+
+export type Profile = {
+  runtime_profile: { id: string; name: string; description: string | null };
+  version: { id: string; version: number; definition: Record<string, unknown> };
 };
 
 export type Change = {
@@ -32,7 +38,11 @@ export type Change = {
   data: Record<string, unknown>;
 };
 
-export type Changes = { changes: Change[]; next_cursor: number; has_more: boolean };
+export type Changes = {
+  changes: Change[];
+  next_cursor: number;
+  has_more: boolean;
+};
 
 export type ApiResult<T> = { status: number; data: T };
 
@@ -47,3 +57,16 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+export type Conversation = {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+  archived_at: number | null;
+};
+
+export type ConversationPage = {
+  conversations: Conversation[];
+  has_more: boolean;
+};

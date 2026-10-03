@@ -97,6 +97,28 @@ class Conversation(APIModel):
     created_at: int
     updated_at: int
     deleted_at: int | None
+    archived_at: int | None = None
+
+
+class ConversationListResponse(APIModel):
+    conversations: list[Conversation]
+    has_more: bool
+
+
+class UpdateConversationRequest(APIModel):
+    expected_updated_at: int
+    title: NonEmptyString | None = None
+    archived: bool | None = None
+
+    @model_validator(mode="after")
+    def require_change(self) -> UpdateConversationRequest:
+        if self.title is None and self.archived is None:
+            raise ValueError("title or archived is required")
+        if self.title is not None:
+            self.title = self.title.strip()
+            if not self.title:
+                raise ValueError("title must not be blank")
+        return self
 
 
 class Branch(APIModel):
@@ -106,6 +128,10 @@ class Branch(APIModel):
     head_item_id: str | None
     created_at: int
     updated_at: int
+
+
+class BranchListResponse(APIModel):
+    branches: list[Branch]
 
 
 class CreateConversationRequest(APIModel):
@@ -191,6 +217,10 @@ class CreateRuntimeProfileResponse(APIModel):
     version: RuntimeProfileVersion
 
 
+class RuntimeProfileListResponse(APIModel):
+    profiles: list[CreateRuntimeProfileResponse]
+
+
 class CreateContextPackRequest(APIModel):
     id: NonEmptyString | None = None
     version_id: NonEmptyString | None = None
@@ -248,6 +278,10 @@ class Run(APIModel):
     started_at: int | None
     completed_at: int | None
     context_pack_version_ids: list[str]
+
+
+class RunListResponse(APIModel):
+    runs: list[Run]
 
 
 class Change(APIModel):

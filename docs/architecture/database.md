@@ -1,6 +1,6 @@
 # Canonical conversation database
 
-Status: proof of concept, proposed migration v1.
+Status: proof of concept, migrations 001 (canonical history) and 002 (archive).
 
 ## Boundary and ownership
 
@@ -32,6 +32,24 @@ separate edge relation in a later migration. The v1 schema must not overload
 Composite foreign keys guarantee that item parents, branch heads, runs, and
 branches cannot cross conversation boundaries. The database also blocks update
 or deletion of items and other versioned records.
+
+The web app edits a message by creating a branch at that message's parent and
+appending a replacement there. It never updates or deletes an existing item;
+the original branch and its descendants remain intact. Branch creation and the
+replacement append are separate transactions in this MVP. If the append fails,
+the new branch can exist without the replacement; the UI preserves the edit.
+
+Migration 002 adds nullable `conversations.archived_at`. Archiving is reversible
+organization, distinct from `deleted_at`, and does not prevent appends. Lists
+exclude deleted records and filter active/archived conversations explicitly.
+Rename/archive/restore use `expected_updated_at` as an optimistic metadata
+version; stale writes return 409. Every successful metadata update advances it
+and writes a full conversation into the same transactional outbox.
+
+Conversation lists use bounded offset pagination (default 50, maximum 200).
+Concurrent updates can reorder pages; clients de-duplicate IDs and refresh from
+the first page. This is navigation, not a replacement for the `changes` cursor.
+The UI pulls changes manually; automatic multi-device sync is not implemented.
 
 ## Runs and portable execution
 

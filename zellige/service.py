@@ -24,8 +24,9 @@ def _json(value: Any) -> str:
 def _row(row: sqlite3.Row) -> dict[str, Any]:
     result = dict(row)
     for key in tuple(result):
-        if key.endswith("_json") and result[key] is not None:
-            result[key.removesuffix("_json")] = json.loads(result.pop(key))
+        if key.endswith("_json"):
+            value = result.pop(key)
+            result[key.removesuffix("_json")] = json.loads(value) if value is not None else None
     return result
 
 
@@ -87,6 +88,7 @@ class ZelligeService:
                     "created_at": timestamp,
                     "updated_at": timestamp,
                     "deleted_at": None,
+                    "archived_at": None,
                 }
                 branch = {
                     "id": branch_id,
@@ -97,7 +99,9 @@ class ZelligeService:
                     "updated_at": timestamp,
                 }
                 connection.execute(
-                    "INSERT INTO conversations VALUES (?, ?, ?, ?, ?)",
+                    """INSERT INTO conversations
+                       (id, title, created_at, updated_at, deleted_at, archived_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
                     tuple(conversation.values()),
                 )
                 connection.execute(
@@ -109,6 +113,89 @@ class ZelligeService:
         except sqlite3.IntegrityError as error:
             raise ServiceError(409, "already_exists", "conversation or branch already exists") from error
         return {"conversation": conversation, "branch": branch}
+
+    def list_conversations(
+        self, archived: bool = False, query: str = "", limit: int = 50, offset: int = 0
+    ) -> dict[str, Any]:
+        with contextlib.closing(self.database.connect()) as connection:
+            rows = connection.execute(
+                """SELECT * FROM conversations
+                   WHERE deleted_at IS NULL AND (archived_at IS NOT NULL) = ?
+                     AND instr(lower(title), lower(?)) > 0
+                   ORDER BY updated_at DESC, id ASC LIMIT ? OFFSET ?""",
+                (archived, query, limit + 1, offset),
+            ).fetchall()
+        return {"conversations": [_row(row) for row in rows[:limit]], "has_more": len(rows) > limit}
+
+    def get_conversation(self, conversation_id: str) -> dict[str, Any]:
+        with contextlib.closing(self.database.connect()) as connection:
+            row = connection.execute(
+                "SELECT * FROM conversations WHERE id = ? AND deleted_at IS NULL",
+                (conversation_id,),
+            ).fetchone()
+        if row is None:
+            raise ServiceError(404, "conversation_not_found", "conversation not found")
+        return _row(row)
+
+    def update_conversation(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        with self.database.transaction(immediate=True) as connection:
+            row = connection.execute(
+                "SELECT * FROM conversations WHERE id = ? AND deleted_at IS NULL",
+                (conversation_id,),
+            ).fetchone()
+            if row is None:
+                raise ServiceError(404, "conversation_not_found", "conversation not found")
+            conversation = _row(row)
+            if conversation["updated_at"] != body["expected_updated_at"]:
+                raise ServiceError(409, "conversation_conflict", "conversation changed; refresh before saving")
+            if "title" in body:
+                conversation["title"] = body["title"]
+            timestamp = max(now_us(), conversation["updated_at"] + 1)
+            if "archived" in body:
+                conversation["archived_at"] = timestamp if body["archived"] else None
+            conversation["updated_at"] = timestamp
+            connection.execute(
+                "UPDATE conversations SET title = ?, archived_at = ?, updated_at = ? WHERE id = ?",
+                (conversation["title"], conversation["archived_at"], timestamp, conversation_id),
+            )
+            self._change(connection, "conversation", conversation_id, conversation, conversation_id)
+        return conversation
+
+    def list_branches(self, conversation_id: str) -> dict[str, Any]:
+        self.get_conversation(conversation_id)
+        with contextlib.closing(self.database.connect()) as connection:
+            rows = connection.execute(
+                "SELECT * FROM branches WHERE conversation_id = ? ORDER BY created_at, id",
+                (conversation_id,),
+            ).fetchall()
+        return {"branches": [_row(row) for row in rows]}
+
+    def list_runtime_profiles(self) -> dict[str, Any]:
+        with contextlib.closing(self.database.connect()) as connection:
+            profiles = []
+            for row in connection.execute("SELECT * FROM runtime_profiles ORDER BY name, id"):
+                version = connection.execute(
+                    "SELECT * FROM runtime_profile_versions WHERE runtime_profile_id = ? ORDER BY version DESC LIMIT 1",
+                    (row["id"],),
+                ).fetchone()
+                profiles.append({"runtime_profile": _row(row), "version": _row(version)})
+        return {"profiles": profiles}
+
+    def list_runs(self, conversation_id: str) -> dict[str, Any]:
+        self.get_conversation(conversation_id)
+        with contextlib.closing(self.database.connect()) as connection:
+            runs = []
+            for row in connection.execute(
+                "SELECT * FROM runs WHERE conversation_id = ? ORDER BY created_at DESC, id LIMIT 50",
+                (conversation_id,),
+            ):
+                run = _row(row)
+                run["context_pack_version_ids"] = [entry[0] for entry in connection.execute(
+                    "SELECT context_pack_version_id FROM run_context_packs WHERE run_id = ? ORDER BY ordinal",
+                    (row["id"],),
+                )]
+                runs.append(run)
+        return {"runs": runs}
 
     def create_branch(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any]:
         branch_id = body.get("id") or _id("branch")
@@ -199,7 +286,7 @@ class ZelligeService:
                     ],
                 )
                 changed = connection.execute(
-                    """UPDATE branches SET head_item_id = ?, updated_at = ?
+                    """UPDATE branches SET head_item_id = ?, updated_at = MAX(updated_at + 1, ?)
                        WHERE id = ? AND conversation_id = ?
                          AND head_item_id IS ?""",
                     (item_id, timestamp, branch_id, conversation_id, expected),
@@ -207,7 +294,7 @@ class ZelligeService:
                 if changed != 1:
                     raise ServiceError(409, "head_conflict", "branch head has changed")
                 connection.execute(
-                    "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                    "UPDATE conversations SET updated_at = MAX(updated_at + 1, ?) WHERE id = ?",
                     (timestamp, conversation_id),
                 )
                 stored_branch = _row(

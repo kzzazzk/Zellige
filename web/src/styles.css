@@ -1,6 +1,174 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
 
-:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #17211e; background: #f5f5f1; }
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: .55; }
-input, textarea { outline-color: #168675; }
+@font-face {
+  font-family: Onest;
+  src: url("/fonts/onest-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  src: url("/fonts/cormorant-garamond-italic-variable.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  --brand-blue: #0f3b6e;
+  --brand-cobalt: #1d4d8f;
+  --brand-teal: #0e6b6a;
+  --brand-deep-teal: #0a5057;
+  --brand-ivory: #f8f6ef;
+  --brand-gold: #c9a962;
+  --background: var(--brand-ivory);
+  --foreground: #142d3e;
+  --sidebar: #eeeae0;
+  --popover: #fffdf8;
+  --popover-foreground: #142d3e;
+  --primary: var(--brand-cobalt);
+  --primary-foreground: var(--brand-ivory);
+  --secondary: #e3ece8;
+  --secondary-foreground: var(--brand-deep-teal);
+  --muted: #eeeae0;
+  --muted-foreground: #50646c;
+  --accent: #d6e6e0;
+  --accent-foreground: var(--brand-deep-teal);
+  --destructive: #c42b35;
+  --border: #d5d4c9;
+  --input: #70838a;
+  --ring: var(--brand-teal);
+  --brand-detail: #806227;
+  --seam: #b08a4a;
+  --seam-soft: #b08a4a33;
+  --user-bubble: #e9efe9;
+  --radius: 0.5rem;
+}
+.dark {
+  color-scheme: dark;
+  --background: #09151d;
+  --foreground: var(--brand-ivory);
+  --sidebar: #061119;
+  --popover: #10232e;
+  --popover-foreground: var(--brand-ivory);
+  --primary: var(--brand-cobalt);
+  --primary-foreground: var(--brand-ivory);
+  --secondary: #143038;
+  --secondary-foreground: #b1d9d3;
+  --muted: #11252f;
+  --muted-foreground: #a0b6bf;
+  --accent: #16383e;
+  --accent-foreground: #d3ebe3;
+  --destructive: #ff8d96;
+  --border: #28404c;
+  --input: #5b7682;
+  --ring: var(--brand-gold);
+  --brand-detail: var(--brand-gold);
+  --seam: #a8894f;
+  --seam-soft: #c9a96226;
+  --user-bubble: #11303a;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-detail: var(--brand-detail);
+  --color-brand-ivory: var(--brand-ivory);
+  --color-brand-gold: var(--brand-gold);
+  --color-seam: var(--seam);
+  --color-seam-soft: var(--seam-soft);
+  --color-user-bubble: var(--user-bubble);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.25);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --font-sans: Onest, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+}
+@layer components {
+/* Brass eight-point-star lattice shared with the landing; texture, not a gradient. */
+.zellige-lattice {
+  position: relative;
+  isolation: isolate;
+}
+.zellige-lattice::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' fill='none' stroke='%23b08a4a' stroke-width='1'%3E%3Cpath d='M21 21h30v30H21zM36 15l21 21-21 21-21-21zM36 0v15M57 36h15M36 57v15M0 36h15M21 21 0 0M51 21 72 0M51 51l21 21M21 51 0 72'/%3E%3C/svg%3E")
+    center top / 72px 72px;
+  opacity: var(--lattice-opacity, 0.14);
+}
+/* Zel floats gently on the empty chat. */
+.zel-float {
+  animation: zel-float 6s ease-in-out infinite;
+}
+@keyframes zel-float {
+  50% { translate: 0 -8px; }
+}
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-detail);
+}
+}
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--input) transparent;
+  }
+  body {
+    @apply m-0 bg-background font-sans text-sm text-foreground antialiased;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input,
+  textarea {
+    caret-color: var(--foreground);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Zellige join geometry reference</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden}svg{display:block;width:100vw;height:100vh}</style>
+<svg xmlns="http://www.w3.org/2000/svg" id="geometry" aria-label="Planar edge-sharing Zellige geometry"></svg>
+<script>
+const ns = 'http://www.w3.org/2000/svg';
+const svg = document.querySelector('svg');
+const q = Math.SQRT2, half = 1 + q, step = half * 2, count = 3;
+svg.setAttribute('viewBox', `0 0 ${step * count} ${step * count}`);
+svg.style.background = '#0F3B6E';
+function polygon(points, fill, x, y) {
+  const p = document.createElementNS(ns, 'polygon');
+  p.setAttribute('points', points.map(([a,b]) => `${a+x},${b+y}`).join(' '));
+  p.setAttribute('fill', fill);
+  p.setAttribute('stroke', '#C9A962');
+  p.setAttribute('stroke-width', '.045');
+  p.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(p);
+}
+const star = [[0,-q],[q-1,-1],[1,-1],[1,1-q],[q,0],[1,q-1],[1,1],[q-1,1],[0,q],[1-q,1],[-1,1],[-1,q-1],[-q,0],[-1,1-q],[-1,-1],[1-q,-1]];
+const petal = [[0,-q],[q-1,-1],[1,-1],[1,-half]];
+const diamond = [[0,-1],[1,0],[0,1],[-1,0]];
+for (let row = -1; row <= count; row++) for (let col = -1; col <= count; col++) {
+  const x = half + col * step, y = half + row * step;
+  polygon(star, '#0A5057', x, y);
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+    polygon(petal.map(([u,v]) => [u*c-v*s,u*s+v*c]), '#F8F6EF', x, y);
+  }
+  polygon(diamond, '#0E6B6A', x + half, y);
+  polygon(diamond, '#1D4D8F', x, y + half);
+}
+</script></html>

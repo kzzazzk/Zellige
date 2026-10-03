@@ -5,7 +5,7 @@ provider-neutral conversation model while allowing different execution profiles
 for general chat, coding, research, and durable personal agents.
 
 This repository contains the server-side SQLite proof of concept and a small
-technical web console. The server remains deliberately small: FastAPI, an
+conversation web app. The server remains deliberately small: FastAPI, an
 authenticated HTTP API, a single daemon-owned database, and content-addressed
 artifact storage.
 
@@ -53,30 +53,42 @@ curl -sS http://127.0.0.1:8787/v1/conversations \
   --data '{"title":"First conversation"}'
 ```
 
-## Try the web console
+## Open the web app
 
-Keep the backend running as above. In another terminal, with Node.js 24 and npm:
+With Node.js 24 and npm, build the static frontend once and start Zellige in
+the same terminal:
 
 ```sh
-cd web
-npm ci
-npm run dev
+npm --prefix web ci
+npm --prefix web run build
+export ZELLIGE_API_TOKEN='replace-with-a-long-random-value'
+uv run zellige
 ```
 
-Open `http://127.0.0.1:5173`. Vite forwards `/health` and `/v1` to the local
-backend at `127.0.0.1:8787`; the browser never opens the SQLite file. Enter the
-same `ZELLIGE_API_TOKEN` in the password field, create a conversation, add a
-message, refresh its history, create a runtime profile and queued run, and read
-the outbox manually. Existing conversations can be opened by conversation and
-branch IDs. The console keeps the token, those IDs, and the change cursor in
-this tab's `sessionStorage`, so a reload restores the server's canonical head.
-Clear the token or close the tab when finished, especially on shared devices.
+Open `http://127.0.0.1:8787` and choose **Conectar servidor**. Enter the same
+`ZELLIGE_API_TOKEN` in Settings; it authenticates this browser, not an AI
+provider. Setting an environment variable in the server does not log the
+browser in. The token and selected conversation/branch are kept only in the
+tab's `sessionStorage`; the appearance preference uses `localStorage`.
 
-The console is not a hosted product UI: there is no login, conversation list,
-runner, generated assistant reply, or automatic sync. A concurrent append
-returns 409, refreshes history, keeps the draft, and never retries it silently.
-The backend has no run-status read endpoint; the UI can show only the initial
-`queued` result returned by `POST /v1/runs`.
+- Start a conversation by saving its first message; reopen it from the sidebar.
+- Search titles (Enter), rename, archive and restore conversations.
+- Create branches from messages; editing creates a branch and preserves the original.
+- Create execution profiles in Settings and queue runs against a saved history.
+- Use the details panel for persisted runs, IDs, HTTP responses and manual outbox reads.
+
+There is no runner, generated assistant reply, automatic sync or account login
+yet. Use **Actualizar** to pull changes from another device. A concurrent append
+returns 409, refreshes history, keeps the draft, and never retries silently.
+Archive is reversible organization, not deletion; archived histories remain writable.
+
+For frontend development with live reload, keep the backend running and use
+`npm --prefix web run dev` in another terminal. Open `http://127.0.0.1:5173`;
+Vite proxies the API and docs to port 8787. The production build needs no Node
+process: the daemon serves `web/dist` beside the authenticated API. A separately
+installed Python wheel is API-only unless started with `--web-dir /path/to/dist`.
+Static hosting of the app elsewhere requires a same-origin proxy to a Zellige
+daemon; it does not turn SQLite or the backend into a static website.
 
 Web checks:
 
@@ -89,10 +101,11 @@ npm run build
 ```
 
 `web/src/api/` owns HTTP contracts and bearer/error handling;
-`web/src/features/useConsole.ts` coordinates the visible flows;
-`web/src/components/` renders the conversation and technical panels;
+`web/src/features/useWorkspace.ts` coordinates reads and optimistic writes;
+`web/src/components/` renders the sidebar, chat, settings and optional inspector;
 `web/src/storage/session.ts` owns tab-scoped restoration. Styling uses Tailwind
-through the Vite plugin, without a separate CSS build process.
+through the Vite plugin. `web/src/components/ui/` contains shadcn/ui's Base UI
+primitives (base-mira), with its MIT notice in `web/public/shadcn-LICENSE.txt`.
 
 ## Run with Docker Compose
 
@@ -102,9 +115,19 @@ docker compose up --build -d
 docker compose ps
 ```
 
+The image builds and includes the web app; open `http://127.0.0.1:8787`.
 Compose binds only to loopback and stores the database and blobs in the named
 `zellige-data` volume. Put a private reverse proxy or VPN in front of the API for
 remote-device access; do not expose the PoC directly to the public Internet.
+
+The private pilot uses `compose.lab.yaml`; local marketing is an opt-in fallback.
+The public landing runs at [zellige.dev](https://zellige.dev), with deployment
+instructions in [`docs/deployment/vercel.md`](docs/deployment/vercel.md).
+`compose.tailscale.yaml` adds two isolated VPN ingress connectors for sharing;
+see [`docs/deployment/lab.md`](docs/deployment/lab.md) for local secrets, proxy
+routes, persistent storage and the Tailscale sharing boundary. Reusable brand
+assets and their source prompts are documented in
+[`docs/design/brand-assets.md`](docs/design/brand-assets.md).
 
 ## Test
 
@@ -114,7 +137,9 @@ uv run python -m unittest discover -s tests -v
 
 The suite covers conversations, branches, concurrent HTTP writers, distinct run
 profiles, versioned context packs, outbox cursor reconnection, cross-conversation
-integrity, content-addressed artifacts, WAL, and persistence after daemon restart.
+integrity, content-addressed artifacts, WAL, persistence after daemon restart,
+v1-to-v2 migration, archived conversation management, metadata conflicts and
+static serving without bypassing API authentication.
 
 ## Continuous integration
 

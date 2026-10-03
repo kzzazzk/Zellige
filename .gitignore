@@ -13,4 +13,9 @@ data/
 web/node_modules/
 web/dist/
 web/coverage/
+.impeccable/review/
+.runtime/
 .output/marketing/
+marketing/node_modules/
+marketing/dist/
+marketing/.ssr/

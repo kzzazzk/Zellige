@@ -11,7 +11,16 @@
       },
       "continue": true
     },
-    { "src": "^/$", "dest": "/index.html" },
-    { "handle": "filesystem" }
+    {
+      "src": "^/$",
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/en/?$",
+      "dest": "/en/index.html"
+    },
+    {
+      "handle": "filesystem"
+    }
   ]
 }

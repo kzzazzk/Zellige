@@ -28,8 +28,15 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
-      - name: Verify the public deployment boundary
-        run: node --test tests/marketing-build.test.mjs
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+      - name: Build the React landing
+        working-directory: marketing
+        run: |
+          npm ci
+          npm run build
+      - name: Verify the built page and the public deployment boundary
+        run: node --test tests/marketing.test.mjs tests/marketing-build.test.mjs
       - name: Package the static landing
         run: node deploy/build-marketing.mjs
       - name: Deploy the packaged landing to production

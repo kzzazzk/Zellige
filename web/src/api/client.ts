@@ -1,15 +1,25 @@
 import { ApiError, type ApiResult } from "./types";
 
-type ErrorBody = { error?: { code?: string; message?: string; details?: Record<string, unknown> } };
+type ErrorBody = {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
+};
 
 export function createClient(getToken: () => string) {
-  async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+  async function request<T>(
+    path: string,
+    options: RequestInit = {},
+  ): Promise<ApiResult<T>> {
     const headers = new Headers(options.headers);
     if (path.startsWith("/v1/")) {
       const token = getToken().trim();
       if (token) headers.set("Authorization", `Bearer ${token}`);
     }
-    if (options.body !== undefined) headers.set("Content-Type", "application/json");
+    if (options.body !== undefined)
+      headers.set("Content-Type", "application/json");
     let response: Response;
     try {
       response = await fetch(path, { ...options, headers });
@@ -20,7 +30,10 @@ export function createClient(getToken: () => string) {
     try {
       body = await response.json();
     } catch {
-      throw new ApiError("El servidor no devolvió JSON válido.", response.status);
+      throw new ApiError(
+        "El servidor no devolvió JSON válido.",
+        response.status,
+      );
     }
     if (!response.ok) {
       const error = (body && typeof body === "object" ? body : {}) as ErrorBody;

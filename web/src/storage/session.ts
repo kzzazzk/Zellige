@@ -7,7 +7,12 @@ export type SavedSession = {
   cursor: number;
 };
 
-const empty: SavedSession = { token: "", conversationId: "", branchId: "", cursor: 0 };
+const empty: SavedSession = {
+  token: "",
+  conversationId: "",
+  branchId: "",
+  cursor: 0,
+};
 
 export function loadSession(): SavedSession {
   try {
@@ -18,9 +23,15 @@ export function loadSession(): SavedSession {
     const record = value as Record<string, unknown>;
     return {
       token: typeof record.token === "string" ? record.token : "",
-      conversationId: typeof record.conversationId === "string" ? record.conversationId : "",
+      conversationId:
+        typeof record.conversationId === "string" ? record.conversationId : "",
       branchId: typeof record.branchId === "string" ? record.branchId : "",
-      cursor: typeof record.cursor === "number" && Number.isSafeInteger(record.cursor) && record.cursor >= 0 ? record.cursor : 0,
+      cursor:
+        typeof record.cursor === "number" &&
+        Number.isSafeInteger(record.cursor) &&
+        record.cursor >= 0
+          ? record.cursor
+          : 0,
     };
   } catch {
     return { ...empty };

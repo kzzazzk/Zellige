@@ -8,13 +8,17 @@ import uvicorn
 from fastapi import Body, Depends, FastAPI, Header, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .api_models import (
     AppendItemRequest,
     Artifact,
     Branch,
+    BranchListResponse,
     BranchHistoryResponse,
+    Conversation,
+    ConversationListResponse,
     ChangesResponse,
     ContextPackVersion,
     CreateBranchRequest,
@@ -30,6 +34,9 @@ from .api_models import (
     HealthResponse,
     Item,
     Run,
+    RunListResponse,
+    RuntimeProfileListResponse,
+    UpdateConversationRequest,
 )
 from .database import Database
 from .service import ServiceError, ZelligeService
@@ -187,6 +194,66 @@ def create_app(service: ZelligeService, token: str) -> FastAPI:
     )
     def health(service: Service) -> dict[str, str]:
         return {"status": "ok", "database": service.database.quick_check()}
+
+    @app.get(
+        "/v1/conversations", response_model=ConversationListResponse,
+        operation_id="listConversations", tags=["conversations"],
+        summary="List active or archived conversations, ordered by recent activity",
+        responses={401: UNAUTHORIZED},
+    )
+    def list_conversations(
+        service: Service, _authorization: Authorization,
+        archived: bool = False, query: str = "",
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> dict[str, Any]:
+        return service.list_conversations(archived, query, limit, offset)
+
+    @app.get(
+        "/v1/conversations/{conversation_id}", response_model=Conversation,
+        operation_id="getConversation", tags=["conversations"],
+        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
+    )
+    def get_conversation(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
+        return service.get_conversation(conversation_id)
+
+    @app.patch(
+        "/v1/conversations/{conversation_id}", response_model=Conversation,
+        operation_id="updateConversation", tags=["conversations"],
+        summary="Rename, archive, or restore a conversation with optimistic metadata checking",
+        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 404: NOT_FOUND, 409: CONFLICT},
+    )
+    def update_conversation(
+        conversation_id: str, body: UpdateConversationRequest,
+        service: Service, _authorization: Authorization,
+    ) -> dict[str, Any]:
+        return service.update_conversation(conversation_id, body.model_dump(exclude_none=True))
+
+    @app.get(
+        "/v1/conversations/{conversation_id}/branches", response_model=BranchListResponse,
+        operation_id="listBranches", tags=["conversations"],
+        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
+    )
+    def list_branches(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
+        return service.list_branches(conversation_id)
+
+    @app.get(
+        "/v1/runtime-profiles", response_model=RuntimeProfileListResponse,
+        operation_id="listRuntimeProfiles", tags=["execution"],
+        summary="List execution profiles with their latest immutable version",
+        responses={401: UNAUTHORIZED},
+    )
+    def list_runtime_profiles(service: Service, _authorization: Authorization) -> dict[str, Any]:
+        return service.list_runtime_profiles()
+
+    @app.get(
+        "/v1/conversations/{conversation_id}/runs", response_model=RunListResponse,
+        operation_id="listConversationRuns", tags=["execution"],
+        summary="Read the 50 most recent runs of a conversation",
+        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
+    )
+    def list_runs(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
+        return service.list_runs(conversation_id)
 
     @app.post(
         "/v1/conversations",
@@ -402,7 +469,7 @@ def create_app(service: ZelligeService, token: str) -> FastAPI:
     return app
 
 
-def build_app(data_dir: Path, token: str) -> FastAPI:
+def build_app(data_dir: Path, token: str, web_dir: Path | None = None) -> FastAPI:
     project_root = Path(__file__).resolve().parents[1]
     packaged_migrations = Path(__file__).resolve().parent / "migrations"
     migrations_dir = (
@@ -412,7 +479,11 @@ def build_app(data_dir: Path, token: str) -> FastAPI:
     )
     database = Database(data_dir / "zellige.sqlite3", migrations_dir)
     service = ZelligeService(database, data_dir / "blobs")
-    return create_app(service, token)
+    app = create_app(service, token)
+    assets = web_dir if web_dir is not None else project_root / "web" / "dist"
+    if (assets / "index.html").is_file():
+        app.mount("/", StaticFiles(directory=assets, html=True), name="web")
+    return app
 
 
 def main() -> None:
@@ -420,9 +491,10 @@ def main() -> None:
     parser.add_argument("--host", default=os.environ.get("ZELLIGE_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("ZELLIGE_PORT", "8787")))
     parser.add_argument("--data-dir", type=Path, default=Path(os.environ.get("ZELLIGE_DATA_DIR", "./data")))
+    parser.add_argument("--web-dir", type=Path, default=os.environ.get("ZELLIGE_WEB_DIR"))
     args = parser.parse_args()
     token = os.environ.get("ZELLIGE_API_TOKEN", "")
-    app = build_app(args.data_dir, token)
+    app = build_app(args.data_dir, token, args.web_dir)
     uvicorn.run(
         app,
         host=args.host,

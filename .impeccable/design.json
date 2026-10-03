@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02T14:00:00Z",
+  "title": "Zellige conversation app",
+  "extensions": {
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ],
+    "motion": [
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Animation and transition duration when reduced motion is requested." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "primary-button-dark",
+      "description": "Compact primary action, theme-aware.",
+      "html": "<button class=\"ds-primary\">Guardar</button>",
+      "css": ".ds-primary{background:var(--primary,#1d4d8f);color:var(--primary-foreground,#f8f6ef);height:28px;padding:0 8px;border:1px solid transparent;border-radius:8px;font:500 12px/1.625 system-ui;cursor:pointer}.ds-primary:hover{opacity:.8}.ds-primary:focus-visible{outline:2px solid var(--ring,#c9a962);outline-offset:2px}.ds-primary:active{transform:translateY(1px)}.ds-primary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Text input",
+      "kind": "input",
+      "description": "Compact labeled field with theme-aware focus.",
+      "html": "<label class=\"ds-label\">Nombre<input class=\"ds-input\" placeholder=\"Conversación\" /></label>",
+      "css": ".ds-label{display:grid;gap:8px;font:500 12px system-ui;color:var(--foreground,#f8f6ef)}.ds-input{height:28px;padding:0 8px;border:1px solid var(--input,#5b7682);border-radius:8px;background:transparent;color:inherit;font:400 12px system-ui}.ds-input::placeholder{color:var(--muted-foreground,#a0b6bf)}.ds-input:hover{border-color:var(--ring,#c9a962)}.ds-input:focus-visible{outline:2px solid var(--ring,#c9a962);outline-offset:2px}.ds-input:disabled{opacity:.5}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Zellige mascot identity on a conversation-first workspace",
+    "overview": "Compact shadcn/Base UI controls around portable conversation history.",
+    "keyCharacteristics": ["Conversation-first", "Ivory and deep navy surfaces", "Secondary diagnostics"],
+    "rules": [],
+    "dos": ["Keep conversation content central and diagnostics optional.", "Preserve accessible names for icon-only actions."],
+    "donts": ["Do not imply that a queued run has generated an answer."]
+  }
+}

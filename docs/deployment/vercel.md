@@ -1,12 +1,29 @@
 # Public landing on Vercel
 
+## Current manual release (2026-10-02)
+
+The ivory-background landing with the ceramic PNG is now `READY` in production
+at <https://zellige.dev>. The eleven allowlisted public files were verified
+byte-for-byte against the local artifact after deployment. HTTPS returns 200
+with the expected CSP, frame denial, `nosniff` and referrer policy. The pilot
+screenshot, mascot and `/v1/conversations` still return 404.
+
+This was an explicitly requested manual deployment through the authenticated
+Vercel connector, using an equivalent version-2 routing configuration. The
+local artifact and future CD still use version 3. Only changed public files
+were uploaded; unchanged files were reused by their verified content hashes.
+No Git commit/push, DNS changes, pilot changes or CI/CD activation were made.
+The new deployment reached READY in approximately two seconds of build time.
+Its post-deploy error/fatal log query returned no entries; no drains are
+configured, and this is not evidence of continuous monitoring.
+
 ## Migration status (2026-10-02)
 
 The initial manual production deployment is `READY` on the public domain.
 Account identifiers and internal deployment URLs are intentionally omitted
 from this repository; inspect them in the provider dashboard when needed.
-It contains the nine allowlisted public files from the current uncommitted
-worktree and an equivalent v2 `vercel.json` routing configuration, uploaded
+That initial deployment contained the nine allowlisted public files from the
+worktree at that time and an equivalent v2 `vercel.json` routing configuration, uploaded
 through the Vercel MCP. Future CD runs use the v3 prebuilt artifact below.
 
 Public HTTPS at <https://zellige.dev> returns 200 with a valid certificate and
@@ -93,27 +110,25 @@ production domains; it does not modify DNS or attach domains.
 
 ## Artifact and local verification
 
+The landing is a Vite + React + Tailwind/shadcn app in `marketing/`. Its build
+prerenders the page to static HTML (content, anchors and disclosures work without
+JavaScript) and hydrates it on the client. The workflow builds it, checks the
+prerendered page, then packages `marketing/dist/` unchanged.
+
 From the repository root, using Node.js 24:
 
 ```sh
-node --test tests/marketing-build.test.mjs
+(cd marketing && npm ci && npm run build)
+node --test tests/marketing.test.mjs tests/marketing-build.test.mjs
 node deploy/build-marketing.mjs
 ```
 
 The output is `.output/marketing/.vercel/output/`, using Vercel Build Output API
-version 3. Its `static/` directory contains exactly these public files:
-
-| Source | Public path |
-| --- | --- |
-| `marketing/index.html` | `/index.html` and `/` |
-| `marketing/styles.css` | `/styles.css` |
-| `marketing/fonts/onest-variable.ttf` | `/fonts/onest-variable.ttf` |
-| `marketing/fonts/OFL.txt` | `/fonts/OFL.txt` |
-| `marketing/fonts/cormorant-garamond-variable.ttf` | `/fonts/cormorant-garamond-variable.ttf` |
-| `marketing/fonts/cormorant-garamond-italic-variable.ttf` | `/fonts/cormorant-garamond-italic-variable.ttf` |
-| `marketing/fonts/CormorantGaramond-OFL.txt` | `/fonts/CormorantGaramond-OFL.txt` |
-| `marketing/images/zellige-mosaic.png` | `/images/zellige-mosaic.png` |
-| `web/public/brand/zellige-emblem.png` | `/brand/zellige-emblem.png` |
+version 3. Its `static/` directory is exactly `marketing/dist/`: `index.html`,
+hashed `assets/` (script, stylesheet, images, wordmark) and `fonts/` with their
+licenses. Packaging refuses symlinks, unexpected file types (including source
+maps), inline `data:` URIs or inline scripts that the CSP would block, and any
+reference to the pilot, its API or the development domain.
 
 The builder copies these files unchanged and copies
 `deploy/vercel-marketing.json` to `.vercel/output/config.json`. That configuration

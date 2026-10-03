@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02T16:03:24Z",
+  "title": "Design System: Zellige marketing landing",
+  "extensions": {
+    "colorMeta": {
+      "teal": { "role": "primary", "displayName": "Zellige teal" },
+      "atlas": { "role": "primary", "displayName": "Atlas teal" },
+      "blue": { "role": "primary", "displayName": "Ceramic blue" },
+      "gold": { "role": "secondary", "displayName": "Brass" },
+      "ivory": { "role": "neutral", "displayName": "Ivory" },
+      "ink": { "role": "neutral", "displayName": "Ink" },
+      "muted": { "role": "neutral", "displayName": "Muted text" },
+      "on-teal-muted": { "role": "neutral", "displayName": "Muted text on teal" },
+      "line": { "role": "neutral", "displayName": "Separator" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Wordmark", "purpose": "Hero lettering; responsive overrides are described in the scoped DESIGN.md." },
+      "headline": { "displayName": "Section heading", "purpose": "Default section headings." },
+      "title": { "displayName": "Capability title", "purpose": "Titles above feature descriptions." },
+      "body": { "displayName": "Body", "purpose": "Capability and invitation paragraphs." },
+      "label": { "displayName": "Action label", "purpose": "Pill action text." }
+    },
+    "shadows": [
+      { "name": "pilot-preview", "value": "0 24px 64px rgb(10 80 87 / .12)", "purpose": "Ambient shadow beneath the static pilot screenshot only." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Button color transitions and entrance easing." },
+      { "name": "button-transition", "value": "background .2s var(--ease-out), color .2s var(--ease-out)", "purpose": "Default button color transitions." },
+      { "name": "ceramic-entrance", "value": "settle 4s var(--ease-out) both", "purpose": "Single entrance only with prefers-reduced-motion: no-preference; even marks use 4.6s. From translate: 0 -48px and rotate: -35deg to translate: 0 0 and rotate: 0deg." },
+      { "name": "wordmark-entrance", "value": "wordmark-settle 1.2s var(--ease-out) both", "purpose": "Single entrance only with prefers-reduced-motion: no-preference; from filter: blur(5px) and translate: 0 12px to filter: blur(0) and translate: 0 0." },
+      { "name": "reduced-motion", "value": "animation: none !important; transition: none !important; scroll-behavior: auto", "purpose": "At prefers-reduced-motion: reduce, disable animation and transitions for all elements and pseudo-elements and restore automatic root scrolling." }
+    ],
+    "breakpoints": [
+      { "name": "mobile-max", "value": "700px" },
+      { "name": "tablet-max", "value": "1000px" },
+      { "name": "wide-min", "value": "1800px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Ivory action",
+      "kind": "button",
+      "refersTo": "button-ivory",
+      "description": "Pilot entry on teal. Uses the supplied local font when loaded by the host.",
+      "html": "<a class=\"ds-button-ivory\" href=\"https://zellige-dev.lab.kzzazzk.tech\">Entrar al piloto<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></a>",
+      "css": ".ds-button-ivory{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:20px;min-height:48px;padding:12px 24px;border-radius:999px;background:var(--ivory,#f8f6ef);color:var(--teal,#0a5057);font:550 14px/1.5 Onest,ui-sans-serif,system-ui,sans-serif;text-decoration:none;transition:background .2s var(--ease-out,cubic-bezier(.16,1,.3,1)),color .2s var(--ease-out,cubic-bezier(.16,1,.3,1))}.ds-button-ivory svg{flex-shrink:0}.ds-button-ivory:hover{background:var(--gold,#c9a962)}.ds-button-ivory:focus-visible{outline:3px solid var(--ivory,#f8f6ef);outline-offset:6px}@media(max-width:700px){.ds-button-ivory{padding-inline:20px;gap:12px}}@media(prefers-reduced-motion:reduce){.ds-button-ivory{transition:none!important}}"
+    },
+    {
+      "name": "Teal action",
+      "kind": "button",
+      "refersTo": "button-teal",
+      "description": "Pilot entry on the brass invitation field.",
+      "html": "<a class=\"ds-button-teal\" href=\"https://zellige-dev.lab.kzzazzk.tech\">Entrar al piloto<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></a>",
+      "css": ".ds-button-teal{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:20px;min-height:48px;padding:12px 24px;border-radius:999px;background:var(--teal,#0a5057);color:var(--ivory,#f8f6ef);font:550 14px/1.5 Onest,ui-sans-serif,system-ui,sans-serif;text-decoration:none;transition:background .2s var(--ease-out,cubic-bezier(.16,1,.3,1)),color .2s var(--ease-out,cubic-bezier(.16,1,.3,1))}.ds-button-teal svg{flex-shrink:0}.ds-button-teal:hover{background:var(--blue,#0f3b6e)}.ds-button-teal:focus-visible{outline:3px solid var(--teal,#0a5057);outline-offset:6px}@media(max-width:700px){.ds-button-teal{padding-inline:20px;gap:12px}}@media(prefers-reduced-motion:reduce){.ds-button-teal{transition:none!important}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Zellige ceramic identity",
+    "overview": "This document describes only `marketing/index.html` and `marketing/styles.css`. The supplied ceramic companion, teal and ivory palette, brass accents and bold rounded lettering define this surface. Its composition follows the confirmed [landing direction](../marketing.md).\n\nThe root [DESIGN.md](../../../DESIGN.md) and root `.impeccable/design.json` continue to describe the conversation app. This scoped document and its [sidecar](.impeccable/design.json) do not replace them or change runtime styles.",
+    "keyCharacteristics": [
+      "Oversized lowercase lettering with generous open space.",
+      "Flat teal, ivory and brass fields with supplied ceramic imagery.",
+      "Pill actions, visible keyboard focus and a single entrance sequence."
+    ],
+    "rules": [],
+    "dos": [
+      "Do retain the supplied ceramic assets and local Onest font.",
+      "Do keep visible focus and respect reduced-motion preferences.",
+      "Do document this landing separately from the conversation app."
+    ],
+    "donts": [
+      "Don't apply the landing's wordmark scale or composition to app controls.",
+      "Don't present the static product preview as an interactive interface.",
+      "Don't introduce a new palette or looping decorative motion."
+    ]
+  }
+}

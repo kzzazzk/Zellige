@@ -7,25 +7,23 @@ import test from 'node:test';
 import { buildMarketing } from '../deploy/build-marketing.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
-const expectedFiles = [
-  'brand/zellige-emblem.png',
-  'fonts/CormorantGaramond-OFL.txt',
-  'fonts/OFL.txt',
-  'fonts/cormorant-garamond-italic-variable.ttf',
-  'fonts/cormorant-garamond-variable.ttf',
-  'fonts/onest-variable.ttf',
-  'images/zellige-mosaic.png',
-  'index.html',
-  'styles.css',
-];
+// A stand-in for the Vite output in marketing/dist.
+const distFiles = {
+  'index.html': '<!doctype html><html lang="es"><body><div id="root"><main>zellige</main></div><script type="module" src="/assets/index-abc.js"></script></body></html>',
+  'assets/index-abc.js': 'console.log("landing");',
+  'assets/index-abc.css': 'body{background:url(/assets/ceramic-abc.webp)}',
+  'assets/ceramic-abc.webp': 'RIFF....WEBP',
+  'fonts/onest-variable.ttf': 'font',
+  'fonts/OFL.txt': 'license',
+};
+const expectedFiles = Object.keys(distFiles).sort();
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'zellige-marketing-build-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const file of expectedFiles) {
-    const source = file.startsWith('brand/') ? `web/public/${file}` : `marketing/${file}`;
-    await mkdir(dirname(join(root, source)), { recursive: true });
-    await cp(join(repositoryRoot, source), join(root, source));
+  for (const [file, contents] of Object.entries(distFiles)) {
+    await mkdir(dirname(join(root, 'marketing/dist', file)), { recursive: true });
+    await writeFile(join(root, 'marketing/dist', file), contents);
   }
   await mkdir(join(root, 'deploy'));
   await cp(join(repositoryRoot, 'deploy/vercel-marketing.json'), join(root, 'deploy/vercel-marketing.json'));
@@ -42,12 +40,12 @@ async function listFiles(root, prefix = '') {
   return files.sort();
 }
 
-test('the artifact contains exactly the approved public files, unchanged', async (t) => {
+test('the artifact contains exactly the built landing, unchanged', async (t) => {
   const root = await fixture(t);
-  // Put excluded material beside inputs to catch accidental recursive copying.
+  // Put private material beside the build to catch accidental copying from outside dist.
   for (const file of [
     '.env', 'data/private.sqlite', 'docs/private.md', 'zellige/server.py',
-    'marketing/images/pilot-preview.png', 'web/public/brand/zellige-companion-hello.png',
+    'marketing/src/App.tsx', 'marketing/images/pilot-preview.png', 'web/public/brand/zellige-emblem.png',
   ]) {
     await mkdir(dirname(join(root, file)), { recursive: true });
     await writeFile(join(root, file), 'must remain private');
@@ -57,8 +55,7 @@ test('the artifact contains exactly the approved public files, unchanged', async
     'config.json', ...expectedFiles.map((file) => `static/${file}`),
   ].sort());
   for (const file of expectedFiles) {
-    const source = file.startsWith('brand/') ? `web/public/${file}` : `marketing/${file}`;
-    assert.deepEqual(await readFile(join(output, 'static', file)), await readFile(join(root, source)));
+    assert.equal(await readFile(join(output, 'static', file), 'utf8'), distFiles[file]);
   }
 });
 
@@ -76,21 +73,36 @@ test('rebuilds remove stale generated assets and preserve sibling data', async (
   assert.equal(await readFile(join(root, '.output/marketing/.vercel/project.json'), 'utf8'), 'project metadata');
 });
 
-test('missing inputs fail before replacing a previous artifact', async (t) => {
+test('a missing build fails before replacing a previous artifact', async (t) => {
   const root = await fixture(t);
   const { output } = await buildMarketing(root);
   const before = await readFile(join(output, 'static/index.html'));
-  await rm(join(root, 'marketing/index.html'));
-  await assert.rejects(buildMarketing(root), { code: 'ENOENT' });
+  await rm(join(root, 'marketing/dist/index.html'));
+  await assert.rejects(buildMarketing(root), /Missing marketing\/dist\/index.html/);
   assert.deepEqual(await readFile(join(output, 'static/index.html')), before);
 });
 
-test('symlinked inputs cannot package a different file', async (t) => {
+test('symlinked build files cannot package a different file', async (t) => {
   const root = await fixture(t);
-  await rm(join(root, 'marketing/index.html'));
+  await rm(join(root, 'marketing/dist/index.html'));
   await writeFile(join(root, 'private.txt'), 'private contents');
-  await symlink(join(root, 'private.txt'), join(root, 'marketing/index.html'));
+  await symlink(join(root, 'private.txt'), join(root, 'marketing/dist/index.html'));
   await assert.rejects(buildMarketing(root), /without symlinks/);
+});
+
+test('unexpected files, inline data URIs, inline scripts and pilot links are refused', async (t) => {
+  const cases = [
+    ['assets/index-abc.js.map', '{}', /Unexpected public file type/],
+    ['assets/index-abc.css', 'body{background:url("data:image/svg+xml,%3Csvg%3E")}', /Inline data: URI/],
+    ['index.html', '<html><script>alert(1)</script></html>', /Inline script/],
+    ['assets/index-abc.js', 'fetch("/v1/conversations")', /private surfaces/],
+    ['index.html', '<a href="https://zellige-dev.example">pilot</a>', /private surfaces/],
+  ];
+  for (const [file, contents, error] of cases) {
+    const root = await fixture(t);
+    await writeFile(join(root, 'marketing/dist', file), contents);
+    await assert.rejects(buildMarketing(root), error, file);
+  }
 });
 
 test('symlinked output ancestors cannot redirect cleanup or writes', async (t) => {
@@ -114,7 +126,9 @@ test('all paths inherit the existing landing security headers', async () => {
   assert.equal(Object.keys(headers).length, 4);
   assert.deepEqual(config.routes[0], { src: '/.*', headers, continue: true });
   assert.deepEqual(config.routes.slice(1), [
-    { src: '^/$', dest: '/index.html' }, { handle: 'filesystem' },
+    { src: '^/$', dest: '/index.html' },
+    { src: '^/en/?$', dest: '/en/index.html' },
+    { handle: 'filesystem' },
   ]);
 });
 

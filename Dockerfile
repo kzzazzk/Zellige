@@ -1,5 +1,12 @@
 FROM ghcr.io/astral-sh/uv:0.11.8 AS uv
 
+FROM node:24-alpine AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM python:3.12-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -20,6 +27,7 @@ COPY app.py ./
 COPY migrations ./migrations
 COPY schemas ./schemas
 COPY zellige ./zellige
+COPY --from=web /web/dist ./web/dist
 RUN uv sync --frozen --no-dev
 
 RUN addgroup -S -g 10001 zellige \

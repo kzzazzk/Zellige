@@ -1,11 +1,21 @@
 import type { Client } from "./client";
-import type { Run } from "./types";
+import type { Profile, Run } from "./types";
 
-export function createProfile(client: Client, name: string) {
-  return client.request<{ runtime_profile: { id: string }; version: { id: string; version: number } }>(
-    "/v1/runtime-profiles",
-    { method: "POST", body: JSON.stringify({ name, definition: { mode: "manual-mvp" } }) },
+export function listProfiles(client: Client) {
+  return client.request<{ profiles: Profile[] }>("/v1/runtime-profiles");
+}
+
+export function listRuns(client: Client, conversationId: string) {
+  return client.request<{ runs: Run[] }>(
+    `/v1/conversations/${encodeURIComponent(conversationId)}/runs`,
   );
+}
+
+export function createProfile(client: Client, name: string, mode = "general") {
+  return client.request<Profile>("/v1/runtime-profiles", {
+    method: "POST",
+    body: JSON.stringify({ name, definition: { mode } }),
+  });
 }
 
 export function createRun(

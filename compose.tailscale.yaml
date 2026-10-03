@@ -1,0 +1,72 @@
+# Optional private ingress. Keep the two application containers independent.
+# Start alongside compose.lab.yaml. Never use host networking: userspace
+# Tailscale can forward other allowed ports to its local network namespace.
+name: zellige-lab
+x-tailscale: &tailscale
+  # Tailscale 1.98.4, pinned to the verified image digest.
+  image: ghcr.io/tailscale/tailscale@sha256:25cde9ad76020b0e29229136d0c38b5962e9a0e1774ffac9b0df68e4a37d6cf0
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+    - /var/run:size=4m,mode=0755
+  mem_limit: 128m
+  cpus: 0.5
+  healthcheck:
+    test: [CMD-SHELL, "tailscale status --json | grep -q '\"BackendState\": \"Running\"'"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 30s
+
+services:
+  tailscale-marketing:
+    <<: *tailscale
+    hostname: zellige-marketing
+    networks: [marketing-ingress]
+    environment:
+      TS_HOSTNAME: zellige-marketing
+      TS_USERSPACE: "true"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: "true"
+      TS_ACCEPT_DNS: "false"
+      TS_EXTRA_ARGS: --advertise-tags=tag:zellige --ssh=false --accept-routes=false
+      TS_TAILSCALED_EXTRA_ARGS: --port=0
+      TS_SERVE_CONFIG: /etc/zellige-tailscale/marketing.json
+    volumes:
+      - tailscale-marketing-state:/var/lib/tailscale
+      - ./deploy/tailscale:/etc/zellige-tailscale:ro
+  tailscale-pilot:
+    <<: *tailscale
+    hostname: zellige-pilot
+    networks: [pilot-ingress]
+    environment:
+      TS_HOSTNAME: zellige-pilot
+      TS_USERSPACE: "true"
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: "true"
+      TS_ACCEPT_DNS: "false"
+      TS_EXTRA_ARGS: --advertise-tags=tag:zellige --ssh=false --accept-routes=false
+      TS_TAILSCALED_EXTRA_ARGS: --port=0
+      TS_SERVE_CONFIG: /etc/zellige-tailscale/pilot.json
+    volumes:
+      - tailscale-pilot-state:/var/lib/tailscale
+      - ./deploy/tailscale:/etc/zellige-tailscale:ro
+
+volumes:
+  tailscale-marketing-state:
+  tailscale-pilot-state:
+
+networks:
+  marketing-ingress:
+    ipam:
+      config:
+        - subnet: 10.204.87.0/29
+          gateway: 10.204.87.1
+  pilot-ingress:
+    ipam:
+      config:
+        - subnet: 10.204.88.0/29
+          gateway: 10.204.88.1

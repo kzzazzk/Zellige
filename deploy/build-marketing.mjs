@@ -1,19 +1,26 @@
-import { lstat, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
-const publicFiles = [
-  ['marketing/index.html', 'index.html'],
-  ['marketing/styles.css', 'styles.css'],
-  ['marketing/fonts/onest-variable.ttf', 'fonts/onest-variable.ttf'],
-  ['marketing/fonts/OFL.txt', 'fonts/OFL.txt'],
-  ['marketing/fonts/cormorant-garamond-variable.ttf', 'fonts/cormorant-garamond-variable.ttf'],
-  ['marketing/fonts/cormorant-garamond-italic-variable.ttf', 'fonts/cormorant-garamond-italic-variable.ttf'],
-  ['marketing/fonts/CormorantGaramond-OFL.txt', 'fonts/CormorantGaramond-OFL.txt'],
-  ['marketing/images/zellige-mosaic.png', 'images/zellige-mosaic.png'],
-  ['web/public/brand/zellige-emblem.png', 'brand/zellige-emblem.png'],
-];
+// The landing is a Vite + React app (marketing/); `npm run build` there writes dist/.
+const distDirectory = 'marketing/dist';
+const allowedExtensions = new Set(['.html', '.css', '.js', '.svg', '.webp', '.png', '.ttf', '.txt']);
+const textExtensions = new Set(['.html', '.css', '.js', '.svg', '.txt']);
+// The public page must never point at the private pilot, its API or the dev domain.
+const forbidden = /\bzellige-dev\b|\/v1\/(?:conversations|runs|profiles)|pilot-preview|(?:^|["'\s(])\/?piloto?\//i;
+
+async function listRegularFiles(root, prefix = '') {
+  const files = [];
+  for (const entry of await readdir(join(root, prefix), { withFileTypes: true })) {
+    const path = join(prefix, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`Expected a regular file without symlinks: ${path}`);
+    if (entry.isDirectory()) files.push(...await listRegularFiles(root, path));
+    else if (entry.isFile()) files.push(path);
+    else throw new Error(`Unexpected file type: ${path}`);
+  }
+  return files.sort();
+}
 
 async function readRegularFile(root, relativePath) {
   const path = join(root, relativePath);
@@ -21,6 +28,19 @@ async function readRegularFile(root, relativePath) {
     throw new Error(`Expected a regular file without symlinks: ${relativePath}`);
   }
   return readFile(path);
+}
+
+function checkPublicFile(target, contents) {
+  const extension = extname(target).toLowerCase();
+  if (!allowedExtensions.has(extension)) throw new Error(`Unexpected public file type: ${target}`);
+  if (!textExtensions.has(extension)) return;
+  const text = contents.toString('utf8');
+  if (forbidden.test(text)) throw new Error(`Public file references private surfaces: ${target}`);
+  // img-src/style-src 'self' would refuse inlined assets in production.
+  if (/url\(\s*["']?data:/i.test(text)) throw new Error(`Inline data: URI in ${target}`);
+  if (extension === '.html' && /<script(?![^>]*\bsrc=)[^>]*>/i.test(text)) {
+    throw new Error(`Inline script in ${target}`);
+  }
 }
 
 async function assertOutputDirectories(root) {
@@ -39,9 +59,16 @@ async function assertOutputDirectories(root) {
 
 export async function buildMarketing(root = repositoryRoot) {
   const sourceRoot = await realpath(root);
-  // Read every explicit input before replacing the previous generated output.
-  const files = await Promise.all(publicFiles.map(async ([source, target]) =>
-    [target, await readRegularFile(sourceRoot, source)]));
+  const dist = join(sourceRoot, distDirectory);
+  if (await realpath(dist) !== dist) throw new Error(`Expected a regular file without symlinks: ${distDirectory}`);
+  // Read and check every input before replacing the previous generated output.
+  const targets = await listRegularFiles(dist);
+  if (!targets.includes('index.html')) throw new Error(`Missing ${distDirectory}/index.html; run npm run build in marketing/`);
+  const files = await Promise.all(targets.map(async (target) => {
+    const contents = await readRegularFile(dist, target);
+    checkPublicFile(target, contents);
+    return [target, contents];
+  }));
   const configuration = await readRegularFile(sourceRoot, 'deploy/vercel-marketing.json');
   if (JSON.parse(configuration).version !== 3) {
     throw new Error('Marketing deployment requires Build Output API version 3');
@@ -58,7 +85,7 @@ export async function buildMarketing(root = repositoryRoot) {
     await writeFile(destination, contents);
   }
   await writeFile(join(output, 'config.json'), configuration);
-  return { output, files: files.map(([target]) => target) };
+  return { output, files: targets };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -1,43 +1,280 @@
-import { ConversationPanel } from "./components/ConversationPanel";
-import { TechnicalPanel } from "./components/TechnicalPanel";
-import { useConsole } from "./features/useConsole";
+import { useEffect, useState } from "react";
+import {
+  ArchiveRestore,
+  GitBranch,
+  LoaderCircle,
+  PanelLeft,
+  PanelRight,
+  Pencil,
+  X,
+} from "lucide-react";
+import type { Conversation } from "./api/types";
+import { useWorkspace } from "./features/useWorkspace";
+import { Chat } from "./components/Chat";
+import { Sidebar } from "./components/Sidebar";
+import { Settings } from "./components/Settings";
+import { Inspector } from "./components/Inspector";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "./components/ui/native-select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "./components/ui/sheet";
+
+function savedDarkMode() {
+  try {
+    return localStorage.getItem("zellige-theme") !== "light";
+  } catch {
+    return true;
+  }
+}
+
+type NamePrompt =
+  | { kind: "rename"; conversation: Conversation }
+  | { kind: "branch"; head: string | null };
 
 export function App() {
-  const state = useConsole();
+  const w = useWorkspace();
+  const [dark, setDark] = useState(savedDarkMode);
+  const [settings, setSettings] = useState(false);
+  const [inspector, setInspector] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
+  const [prompt, setPrompt] = useState<NamePrompt | null>(null);
+  const [name, setName] = useState("");
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try {
+      localStorage.setItem("zellige-theme", dark ? "dark" : "light");
+    } catch {
+      /* Theme still works without storage. */
+    }
+  }, [dark]);
+
+  function rename(conversation: Conversation) {
+    setPrompt({ kind: "rename", conversation });
+    setName(conversation.title);
+  }
+  function fork(head: string | null) {
+    setPrompt({ kind: "branch", head });
+    setName(`Rama ${(w.thread?.branches.length ?? 0) + 1}`);
+  }
+  async function submitName() {
+    if (!prompt || !name.trim()) return;
+    const ok =
+      prompt.kind === "rename"
+        ? await w.changeConversation(prompt.conversation, {
+            title: name.trim(),
+          })
+        : await w.fork(name, prompt.head);
+    if (ok) setPrompt(null);
+  }
+
+  const sidebar = (
+    <Sidebar
+      workspace={w}
+      onSettings={() => {
+        setMobileNav(false);
+        setSettings(true);
+      }}
+      onRename={rename}
+      onNavigate={() => setMobileNav(false)}
+    />
+  );
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
-          <div><h1 className="text-2xl font-bold tracking-tight">Zellige</h1><p className="text-xs text-stone-500">Consola técnica · MVP chat</p></div>
-          <div className="flex items-center gap-3">
-            <span role="status" className={"rounded-full px-3 py-1 text-xs font-semibold " + (state.health === "ok" ? "bg-emerald-100 text-emerald-900" : state.health === "offline" ? "bg-red-100 text-red-900" : "bg-stone-100 text-stone-700")}>Servidor: {state.health === "ok" ? "conectado" : state.health === "offline" ? "sin conexión" : "comprobando"}</span>
-            <button className="text-xs text-emerald-800 underline" onClick={() => void state.checkHealth()}>Comprobar</button>
+    <div className="flex h-dvh overflow-hidden">
+      <aside className="hidden w-64 shrink-0 border-r border-seam-soft md:block">
+        {sidebar}
+      </aside>
+      <Sheet open={mobileNav} onOpenChange={setMobileNav}>
+        <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
+          <SheetTitle className="sr-only">Conversaciones</SheetTitle>
+          {sidebar}
+        </SheetContent>
+      </Sheet>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-seam-soft px-3 sm:px-5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Abrir conversaciones"
+            onClick={() => setMobileNav(true)}
+          >
+            <PanelLeft />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium tracking-[-0.01em]">
+              {w.thread?.conversation.title ?? "Nueva conversación"}
+            </p>
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6">
-        <section className="rounded-xl border border-stone-200 bg-white p-4">
-          <label className="block text-sm font-semibold" htmlFor="api-token">Token API del servidor</label>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <input id="api-token" type="password" autoComplete="off" className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" value={state.token} onChange={(event) => state.setToken(event.target.value)} placeholder="Bearer token" />
-            <button className="text-sm text-stone-600 underline" onClick={() => state.setToken("")}>Borrar token</button>
-          </div>
-          <p className="mt-2 text-xs text-stone-500">Se guarda solo en sessionStorage de esta pestaña para poder recuperar la conversación tras recargar. No lo uses en un dispositivo compartido.</p>
-        </section>
-        {state.failure && (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-            <strong>{state.failure.status === 409 && state.failure.code === "head_conflict" ? "Conflicto 409: la rama cambió." : "Error"}</strong> {state.failure.message}
-            {state.failure.status === 409 && state.failure.code === "head_conflict" && <p className="mt-1">Historial y cabeza actualizados. El borrador sigue intacto; revisa antes de volver a enviarlo.</p>}
-            {state.failure.details && <pre className="mt-2 overflow-auto text-xs">{JSON.stringify(state.failure.details, null, 2)}</pre>}
+          {w.busy && (
+            <span role="status" aria-label="Sincronizando">
+              <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" />
+            </span>
+          )}
+          {w.thread && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Renombrar conversación"
+                title="Renombrar"
+                disabled={w.busy}
+                onClick={() => rename(w.thread!.conversation)}
+              >
+                <Pencil />
+              </Button>
+              <NativeSelect
+                aria-label="Rama"
+                value={w.thread.branch.id}
+                onChange={(event) =>
+                  void w.selectConversation(
+                    w.thread!.conversation.id,
+                    event.target.value,
+                  )
+                }
+                disabled={w.busy}
+                className="max-w-28 sm:max-w-44"
+              >
+                {w.thread.branches.map((branch) => (
+                  <NativeSelectOption key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Nueva rama"
+                title="Nueva rama"
+                disabled={w.busy}
+                onClick={() => fork(w.thread!.branch.head_item_id)}
+              >
+                <GitBranch />
+              </Button>
+            </>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Detalles de la conversación"
+            title="Detalles"
+            onClick={() => setInspector(true)}
+          >
+            <PanelRight />
+          </Button>
+        </header>
+        {w.thread?.conversation.archived_at && (
+          <div className="flex items-center justify-center gap-3 border-b bg-muted px-4 py-2 text-xs text-muted-foreground">
+            <span>Esta conversación está archivada.</span>
+            <Button
+              variant="ghost"
+              disabled={w.busy}
+              onClick={() =>
+                void w.changeConversation(w.thread!.conversation, {
+                  archived: false,
+                })
+              }
+            >
+              <ArchiveRestore />
+              Restaurar
+            </Button>
           </div>
         )}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(20rem,1fr)]">
-          <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
-            <ConversationPanel conversationId={state.conversationId} branchId={state.branchId} headItemId={state.headItemId} items={state.items} busy={state.busy} onCreate={state.newConversation} onOpen={state.openExisting} onRefresh={state.refreshHistory} onSend={state.sendMessage} />
+        {w.failure && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-3 border-b bg-destructive/10 px-5 py-3 text-xs leading-5 text-destructive"
+          >
+            <span>{w.failure.message}</span>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Cerrar aviso"
+              onClick={w.dismissError}
+            >
+              <X />
+            </Button>
           </div>
-          <TechnicalPanel active={!!state.conversationId} busy={state.busy} profileVersionId={state.profileVersionId} run={state.run} changes={state.changes} cursor={state.cursor} hasMoreChanges={state.hasMoreChanges} lastStatus={state.lastStatus} lastResponse={state.lastResponse} onProfile={state.newProfile} onRun={state.newRun} onChanges={state.readChanges} />
-        </div>
+        )}
+        <Chat
+          key={w.connected ? "connected" : "disconnected"}
+          workspace={w}
+          onDetails={() => setInspector(true)}
+          onSettings={() => setSettings(true)}
+          onFork={fork}
+        />
       </main>
+      {settings && (
+        <Settings
+          workspace={w}
+          onClose={() => setSettings(false)}
+          dark={dark}
+          onTheme={() => setDark(!dark)}
+        />
+      )}
+      {inspector && (
+        <Inspector workspace={w} onClose={() => setInspector(false)} />
+      )}
+      <Dialog
+        open={prompt !== null}
+        onOpenChange={(open) => {
+          if (!open) setPrompt(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {prompt?.kind === "rename"
+                ? "Renombrar conversación"
+                : "Crear rama"}
+            </DialogTitle>
+            <DialogDescription>
+              {prompt?.kind === "rename"
+                ? "El historial se conserva al cambiar el nombre."
+                : "La rama empezará en el mensaje seleccionado. El historial original se conserva."}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitName();
+            }}
+            className="space-y-4"
+          >
+            <Input
+              aria-label="Nombre"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              disabled={w.busy}
+              autoFocus
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={w.busy}
+                onClick={() => setPrompt(null)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={w.busy || !name.trim()}>
+                Guardar
+              </Button>
+            </DialogFooter>
+          </form>
+          {w.failure && <p className="text-destructive">{w.failure.message}</p>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,104 +1,222 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { App } from "./App";
+import { apiFixture } from "./test/apiFixture";
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-const branch = (head: string | null) => ({ id: "branch-1", conversation_id: "conv-1", name: "main", head_item_id: head });
-const item = (id: string, parent: string | null, text: string) => ({ id, parent_item_id: parent, kind: "message", payload: { type: "message", role: "user", content: [{ type: "text", text }] }, created_at: 1 });
-
-describe("MVP console", () => {
-  beforeEach(() => sessionStorage.clear());
-
-  it("shows disconnected health", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
-    render(<App />);
-    expect(await screen.findByText("Servidor: sin conexión")).toBeInTheDocument();
+async function connect() {
+  fireEvent.click(screen.getByRole("button", { name: "Conectar servidor" }));
+  fireEvent.change(screen.getByLabelText("Clave de acceso"), {
+    target: { value: "secret" },
   });
+  fireEvent.click(screen.getByRole("button", { name: "Conectar" }));
+  await screen.findByText("Conectado");
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+}
 
-  it("creates a conversation, appends with the current head, restores history after reload, and reads changes", async () => {
-    const sent: Array<{ path: string; body?: Record<string, unknown>; authorization: string | null }> = [];
-    let messages = [item("item-1", null, "hola")];
-    const fetchMock = vi.fn().mockImplementation((path: string, options?: RequestInit) => {
-      const headers = new Headers(options?.headers);
-      const body = options?.body ? JSON.parse(String(options.body)) as Record<string, unknown> : undefined;
-      sent.push({ path, body, authorization: headers.get("Authorization") });
-      if (path === "/health") return Promise.resolve(json({ status: "ok", database: "ok" }));
-      if (path === "/v1/conversations") return Promise.resolve(json({ conversation: { id: "conv-1", title: "Prueba" }, branch: branch(null) }, 201));
-      if (path.endsWith("/items")) {
-        const next = item(`item-${messages.length + 1}`, body?.expected_head_item_id as string | null, "segundo");
-        messages = [...messages, next];
-        return Promise.resolve(json(next, 201));
-      }
-      if (path.endsWith("/history")) return Promise.resolve(json({ branch: branch(messages.at(-1)?.id ?? null), items: messages }));
-      if (path.startsWith("/v1/changes?")) return Promise.resolve(json({ changes: [{ seq: 1, entity_type: "item", entity_id: "item-1", operation: "upsert", data: {}, conversation_id: "conv-1" }], next_cursor: 1, has_more: false }));
-      throw new Error(`Unexpected ${path}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
+async function send(text: string) {
+  fireEvent.change(screen.getByLabelText("Mensaje"), {
+    target: { value: text },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar mensaje" }));
+  await waitFor(() => expect(screen.getByLabelText("Mensaje")).toHaveValue(""));
+}
+
+describe("Conversation app", () => {
+  it("reuses the companion asset and persists the selected theme", () => {
+    apiFixture();
     const view = render(<App />);
-    expect(await screen.findByText("Servidor: conectado")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Token API del servidor"), { target: { value: "secret" } });
-    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Prueba" } });
-    fireEvent.click(screen.getByRole("button", { name: "Crear conversación" }));
-    await waitFor(() => expect(screen.getByText("conv-1")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText("Nuevo mensaje de usuario"), { target: { value: "segundo" } });
-    fireEvent.click(screen.getByRole("button", { name: "Añadir mensaje" }));
-    await waitFor(() => expect(screen.getByText("segundo")).toBeInTheDocument());
-    const append = sent.find((entry) => entry.path.endsWith("/items"));
-    expect(append?.authorization).toBe("Bearer secret");
-    expect(append?.body).toEqual({ expected_head_item_id: null, kind: "message", payload: { type: "message", role: "user", content: [{ type: "text", text: "segundo" }] } });
-    fireEvent.click(screen.getByRole("button", { name: "Consultar cambios" }));
-    await waitFor(() => expect(screen.getByText(/Consulta manual global desde el cursor 1/)).toBeInTheDocument());
+    expect(screen.getByRole("img", { name: "Zel, la mascota de Zellige" }))
+      .toHaveAttribute("src", "/brand/zellige-companion-hello.png");
+    expect(document.documentElement).toHaveClass("dark");
+    fireEvent.click(screen.getByRole("button", { name: "Conectar servidor" }));
+    fireEvent.click(screen.getByRole("button", { name: "Usar tema claro" }));
+    expect(document.documentElement).not.toHaveClass("dark");
     view.unmount();
     render(<App />);
-    expect(await screen.findByText("hola")).toBeInTheDocument();
-    expect(screen.getByText("segundo")).toBeInTheDocument();
-    expect(sent.some((entry) => entry.path.includes("cursor=0"))).toBe(true);
+    expect(document.documentElement).not.toHaveClass("dark");
   });
 
-  it("refreshes on 409, preserves the draft, and does not retry the append", async () => {
-    let head = "item-1";
-    const paths: string[] = [];
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((path: string) => {
-      paths.push(path);
-      if (path === "/health") return Promise.resolve(json({ status: "ok", database: "ok" }));
-      if (path.endsWith("/history")) return Promise.resolve(json({ branch: branch(head), items: head === "item-1" ? [item("item-1", null, "primero")] : [item("item-1", null, "primero"), item("item-2", "item-1", "externo")] }));
-      if (path.endsWith("/items")) { head = "item-2"; return Promise.resolve(json({ error: { code: "head_conflict", message: "branch head has changed", details: { expected_head_item_id: "item-1", actual_head_item_id: "item-2" } } }, 409)); }
-      throw new Error(`Unexpected ${path}`);
-    }));
+  it("keeps independent drafts for branches and new chats and clears them on disconnect", async () => {
+    apiFixture();
     render(<App />);
-    fireEvent.change(screen.getByLabelText("Token API del servidor"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByText("Abrir conversación existente por ID"));
-    fireEvent.change(screen.getByLabelText("ID de conversación"), { target: { value: "conv-1" } });
-    fireEvent.change(screen.getByLabelText("ID de rama"), { target: { value: "branch-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
-    expect(await screen.findByText("primero")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Nuevo mensaje de usuario"), { target: { value: "mi borrador" } });
-    fireEvent.click(screen.getByRole("button", { name: "Añadir mensaje" }));
-    expect(await screen.findByText(/Conflicto 409/)).toBeInTheDocument();
-    expect(await screen.findByText("externo")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nuevo mensaje de usuario")).toHaveValue("mi borrador");
-    expect(paths.filter((path) => path.endsWith("/items"))).toHaveLength(1);
+    await connect();
+    await send("Chat A");
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "Borrador A" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Nueva conversación" }));
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("");
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "Borrador nuevo" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Chat A" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Mensaje")).toHaveValue("Borrador A"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Nueva rama" }));
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("");
+    fireEvent.change(screen.getByLabelText("Rama"), {
+      target: { value: "branch-1" },
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText("Mensaje")).toHaveValue("Borrador A"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Nueva conversación" }));
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("Borrador nuevo");
+    fireEvent.click(screen.getByRole("button", { name: /Ajustes/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Desconectar" }));
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("");
   });
 
-  it("creates a profile and shows a queued run without implying execution", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((path: string) => {
-      if (path === "/health") return Promise.resolve(json({ status: "ok", database: "ok" }));
-      if (path.endsWith("/history")) return Promise.resolve(json({ branch: branch(null), items: [] }));
-      if (path === "/v1/runtime-profiles") return Promise.resolve(json({ runtime_profile: { id: "profile-1" }, version: { id: "version-1", version: 1 } }, 201));
-      if (path === "/v1/runs") return Promise.resolve(json({ id: "run-1", status: "queued", input_head_item_id: null, runtime_profile_version_id: "version-1", context_pack_version_ids: [] }, 201));
-      throw new Error(`Unexpected ${path}`);
-    }));
+  it("connects, creates a conversation from the first message, renames it and restores history on reload", async () => {
+    const api = apiFixture();
+    const view = render(<App />);
+    await connect();
+    await send("Mi primera idea");
+    expect(api.items[0].payload).toEqual({
+      type: "message",
+      role: "user",
+      content: [{ type: "text", text: "Mi primera idea" }],
+    });
+    expect(api.items[0].parent_item_id).toBeNull();
+    await send("Otro detalle");
+    expect(api.items[1].parent_item_id).toBe(api.items[0].id);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Renombrar conversación" }),
+    );
+    fireEvent.change(screen.getByLabelText("Nombre"), {
+      target: { value: "Ideas de producto" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(screen.getAllByText("Ideas de producto")).toHaveLength(2),
+    );
+    view.unmount();
     render(<App />);
-    fireEvent.change(screen.getByLabelText("Token API del servidor"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByText("Abrir conversación existente por ID"));
-    fireEvent.change(screen.getByLabelText("ID de conversación"), { target: { value: "conv-1" } });
-    fireEvent.change(screen.getByLabelText("ID de rama"), { target: { value: "branch-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
-    await waitFor(() => expect(screen.getByText("conv-1")).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText("Nombre del perfil"), { target: { value: "prueba" } });
+    expect(await screen.findByText("Mi primera idea")).toBeInTheDocument();
+    expect(screen.getByText("Otro detalle")).toBeInTheDocument();
+  });
+
+  it("preserves the draft and refreshes after a conflicting append without retrying", async () => {
+    const api = apiFixture();
+    render(<App />);
+    await connect();
+    await send("Primero");
+    api.conflictNext();
+    fireEvent.change(screen.getByLabelText("Mensaje"), {
+      target: { value: "Borrador" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar mensaje" }));
+    expect(
+      await screen.findByText("Desde otro dispositivo"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Mensaje")).toHaveValue("Borrador");
+    expect(screen.getByRole("alert")).toHaveTextContent("otro dispositivo");
+    expect(
+      api.fetchMock.mock.calls.filter(([path]) => path.endsWith("/items")),
+    ).toHaveLength(2);
+  });
+
+  it("edits on a new branch and keeps the original message unchanged", async () => {
+    const api = apiFixture();
+    render(<App />);
+    await connect();
+    await send("Original");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Editar en una nueva rama" }),
+    );
+    fireEvent.change(screen.getByLabelText("Texto editado"), {
+      target: { value: "Revisado" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Guardar en nueva rama" }),
+    );
+    expect(
+      await within(screen.getByLabelText("Historial")).findByText("Revisado"),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Texto editado")).not.toBeInTheDocument(),
+    );
+    expect(api.branches).toHaveLength(2);
+    expect(api.items[0].payload.content).toEqual([
+      { type: "text", text: "Original" },
+    ]);
+    fireEvent.change(screen.getByLabelText("Rama"), {
+      target: { value: "branch-1" },
+    });
+    expect(
+      await within(screen.getByLabelText("Historial")).findByText("Original"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Revisado")).not.toBeInTheDocument();
+  });
+
+  it("archives and restores a conversation without deleting it", async () => {
+    apiFixture();
+    render(<App />);
+    await connect();
+    await send("Archivable");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Opciones de Archivable" }),
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Archivar" }));
+    await screen.findByText("Esta conversación está archivada.");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Opciones de Archivable" }),
+      ).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Esta conversación está archivada."),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Opciones de Archivable" }),
+    ).toBeInTheDocument();
+  });
+
+  it("creates a selectable profile and persists a queued execution", async () => {
+    const api = apiFixture();
+    render(<App />);
+    await connect();
+    await send("Preparar tarea");
+    fireEvent.click(screen.getByRole("button", { name: /Ajustes/ }));
+    fireEvent.change(screen.getByLabelText("Nombre del perfil"), {
+      target: { value: "Investigador" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Crear perfil" }));
-    await waitFor(() => expect(screen.getByText("version-1")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Crear run" }));
-    await waitFor(() => expect(screen.getAllByRole("status").find((element) => element.textContent?.includes("run-1"))).toHaveTextContent("queued"));
+    expect(
+      await within(screen.getByRole("dialog")).findByText("Investigador"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Cerrar",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Encolar" }));
+    await waitFor(() => expect(api.runs).toHaveLength(1));
+    expect(screen.getByRole("status")).toHaveTextContent("En cola");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Detalles de la conversación" }),
+    );
+    expect(
+      await within(screen.getByRole("dialog")).findByText("En cola"),
+    ).toBeInTheDocument();
   });
 });
