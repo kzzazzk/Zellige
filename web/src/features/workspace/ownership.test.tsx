@@ -1,3 +1,4 @@
+import { createQueryWrapper } from "../../test/queryWrapper";
 import { StrictMode, type ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -70,7 +71,7 @@ describe("workspace ownership", () => {
     const saved = { token: "secret", conversationId: "missing", branchId: "saved-branch", cursor: 17 };
     saveSession(saved);
     const release = api.deferNext("GET", "/v1/runtime-profiles");
-    const { result, unmount } = renderHook(useWorkspace);
+    const { result, unmount } = renderHook(useWorkspace, createQueryWrapper());
     expect(result.current.busy).toBe(true);
     expect(await result.current.sendMessage("blocked")).toBe(false);
     expect(loadSession()).toEqual(saved);
@@ -83,7 +84,8 @@ describe("workspace ownership", () => {
   it("restores safely through the Strict Mode lifecycle probe and swallows missing-conversation 404", async () => {
     apiFixture();
     saveSession({ token: "secret", conversationId: "missing", branchId: "missing", cursor: 23 });
-    const wrapper = ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>;
+    const { wrapper: QueryWrapper } = createQueryWrapper();
+    const wrapper = ({ children }: { children: ReactNode }) => <StrictMode><QueryWrapper>{children}</QueryWrapper></StrictMode>;
     const { result } = renderHook(useWorkspace, { wrapper });
     await waitFor(() => expect(result.current.connected).toBe(true));
     expect(result.current.busy).toBe(false);
