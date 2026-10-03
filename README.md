@@ -150,7 +150,12 @@ requires a free OSS project and repository variables/secrets before its check
 can pass. Setup, required checks, and local commands are documented in
 [`docs/development/ci.md`](docs/development/ci.md).
 
-Release publishing and automatic deployment are not enabled yet.
+The public landing at `zellige.dev` is deployed on Vercel. Its separate GitHub
+Actions workflow publishes `marketing/` from `main`; see
+[deployment setup and operations](docs/deployment/vercel.md). The workflow runs
+independently of CI, so a successful deployment does not establish that the
+CI checks passed. The hosted landing does not expose the private pilot API.
+Backend deployment and release publishing remain disabled.
 
 ## Scope
 

@@ -8,6 +8,9 @@ pushes to `main`, and manual dispatches.
 
 - **Web lint, types, tests and build** installs from `web/package-lock.json`
   with `npm ci`, then checks ESLint, TypeScript, Vitest, and the Vite build.
+- **Landing lint, types, build and checks** installs from
+  `marketing/package-lock.json`, builds the public landing, checks its output,
+  and verifies the packaged artifact.
 - **Build** checks the dependency lock, builds the Python source distribution
   and wheel, verifies both can create a database from their packaged migrations,
   and builds the Docker image. Python distributions are retained for seven days
@@ -18,13 +21,20 @@ pushes to `main`, and manual dispatches.
   workflow run, analyzes the code, and waits up to five minutes for the quality
   gate. A rejected gate fails the check, as does missing configuration.
 
-SonarQube currently analyzes backend sources and Python coverage only; the web
-job validates the frontend independently, without uploading JS coverage.
+SonarQube analyzes backend sources and the chat web app in `web/src`.
+`marketing/` is checked by its CI job but is outside the Sonar source scope.
+Web tests and `web/src/test/` support are excluded from sources and included
+only as tests; all Python tests remain in test scope. Only Python coverage is
+imported. There is no JS/TS coverage report: uncovered web code can fail the
+Sonar way gate. Address findings and add genuine coverage later; do not bypass
+the gate with blanket frontend coverage exclusions.
 
-Web, Build, and Tests run in parallel. Dependencies are resolved from
-`web/package-lock.json` and `uv.lock`, and third-party actions are pinned to
-verified commit hashes. The workflow grants
-only read access to repository contents; it does not publish packages.
+Web, Landing, Build, and Tests run in parallel. Dependencies are resolved from
+the two npm lockfiles and `uv.lock`, and third-party actions are pinned to
+verified commit hashes. The CI workflow grants only read access to repository
+contents; it does not publish packages.
+Newer runs cancel in-progress validation for the same branch or PR.
+Distribution and Python coverage artifacts are retained for seven days.
 
 ## Connect SonarQube Cloud
 
@@ -67,8 +77,9 @@ After the workflow is published and its checks have appeared, configure an
 active GitHub branch ruleset for `main` with:
 
 - Pull requests required, with one approval from another team member.
-- Required status checks: **Web lint, types, tests and build**, **Build**,
-  **Tests**, and **SonarQube**.
+- Required status checks: **Web lint, types, tests and build**,
+  **Landing lint, types, build and checks**, **Build**, **Tests**, and
+  **SonarQube**.
 - Dismiss outdated approvals, require resolved review conversations, and require
   the branch to be up to date before merging.
 - Block force pushes and branch deletion, with no routine bypass actors.
@@ -76,16 +87,16 @@ active GitHub branch ruleset for `main` with:
 
 These settings are applied in GitHub, not enforced by this document. During the
 initial rollout, bootstrap the main-branch Sonar baseline before requiring its
-check, then verify a PR produces all four checks.
+check, then verify a PR produces all five checks.
 
 ## External contributions
 
 Fork PRs and Dependabot PRs do not normally receive the repository's Sonar token.
-Web, Build, and Tests still run; SonarQube fails explicitly instead of appearing green
-without an analysis. For a reviewed external contribution, a maintainer can
-bring the exact reviewed changes to a repository branch and open a PR from
-there so the full workflow can run. Do not run fork code with repository secrets
-through `pull_request_target`.
+Web, Landing, Build, and Tests still run; SonarQube fails explicitly instead of
+appearing green without an analysis. For a reviewed external contribution, a
+maintainer can bring the exact reviewed changes to a repository branch and open
+a PR from there so the full workflow can run. Do not run fork code with
+repository secrets through `pull_request_target`.
 
 ## Local equivalents
 
@@ -107,10 +118,10 @@ npm run build
 Generated coverage files, distributions, and scanner working files are ignored
 by Git.
 
-## Future delivery
+## Delivery
 
-CI currently validates and retains artifacts only. Nightly publication,
-version-tag releases, registry publishing, and automatic deployment are not
-enabled. Release publishing can be added later as a separate workflow. If the
-product gains a website, its deployment can have its own workflow after the
-relevant CI checks, without tying that deployment to backend releases.
+The separate `Deploy marketing to Vercel` workflow builds and publishes the
+public landing from `main`. It does not wait for this CI workflow, so production
+publication is not gated by these checks. See [landing deployment setup and
+operations](../deployment/vercel.md). Backend deployment, nightly publication,
+registry publishing, and version-tag releases remain disabled.
