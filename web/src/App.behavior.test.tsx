@@ -1,14 +1,17 @@
+import { createQueryWrapper } from "./test/queryWrapper";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useWorkspace } from "./features/useWorkspace";
 import { apiFixture } from "./test/apiFixture";
 import { saveSession, loadSession } from "./storage/session";
+import { workspaceKeys } from "./features/workspace/queryKeys";
 
 async function setup() {
   const api = apiFixture();
-  const hook = renderHook(useWorkspace);
+  const provider = createQueryWrapper();
+  const hook = renderHook(useWorkspace, provider);
   await act(async () => { expect(await hook.result.current.connect(" secret ")).toBe(true); });
-  return { api, ...hook };
+  return { api, queryClient: provider.queryClient, ...hook };
 }
 const itemsRequest = (path: string) => path.endsWith("/items");
 const listRequest = (path: string) => path.startsWith("/v1/conversations?");
@@ -30,12 +33,13 @@ describe("Workspace safety characterization", () => {
   });
 
   it("transfers a failed first append draft to the created thread; manual retry creates no second conversation", async () => {
-    const { api, result } = await setup();
+    const { api, result, queryClient } = await setup();
     act(() => result.current.setDraft("retained"));
     api.failNext(itemsRequest);
     await act(async () => { expect(await result.current.sendMessage("retained")).toBe(false); });
     expect(result.current.draft).toBe("retained");
     expect(result.current.thread?.items).toHaveLength(0);
+    expect(queryClient.getQueryData(workspaceKeys.thread("conv-1", "branch-1"))).toBe(result.current.thread);
     await act(async () => { expect(await result.current.sendMessage(result.current.draft)).toBe(true); });
     expect(api.conversations).toHaveLength(1);
     expect(api.items).toHaveLength(1);
@@ -43,11 +47,12 @@ describe("Workspace safety characterization", () => {
   });
 
   it("retains successful local append and clears its draft when follow-up reads fail", async () => {
-    const { api, result } = await setup();
+    const { api, result, queryClient } = await setup();
     act(() => result.current.setDraft("saved"));
     api.failNext(listRequest);
     await act(async () => { expect(await result.current.sendMessage("saved")).toBe(true); });
     expect(result.current.thread?.items).toHaveLength(1);
+    expect(queryClient.getQueryData(workspaceKeys.thread("conv-1", "branch-1"))).toBe(result.current.thread);
     expect(result.current.draft).toBe("");
     expect(result.current.failure?.message).toContain("Mensaje guardado");
     expect(api.items).toHaveLength(1);
@@ -66,7 +71,7 @@ describe("Workspace safety characterization", () => {
   });
 
   it("forks an edit from the non-root parent and retains the new branch after replacement failure", async () => {
-    const { api, result } = await setup();
+    const { api, result, queryClient } = await setup();
     await act(async () => { await result.current.sendMessage("root"); });
     await act(async () => { await result.current.sendMessage("child"); });
     await act(async () => { await result.current.sendMessage("descendant"); });
@@ -74,6 +79,8 @@ describe("Workspace safety characterization", () => {
     await act(async () => { expect(await result.current.fork("edit", api.items[1].parent_item_id, "replacement")).toBe(false); });
     expect(api.branches[1].head_item_id).toBe(api.items[0].id);
     expect(result.current.thread?.branch.id).toBe(api.branches[1].id);
+    expect(queryClient.getQueryData(workspaceKeys.thread("conv-1", api.branches[1].id))).toBe(result.current.thread);
+    expect(queryClient.getQueryData(workspaceKeys.thread("conv-1", "branch-1"))).toBeDefined();
     expect(api.items).toHaveLength(3);
   });
 
@@ -87,7 +94,7 @@ describe("Workspace safety characterization", () => {
     await act(async () => { await result.current.selectConversation(first); });
     expect(result.current.draft).toBe("draft A");
     unmount();
-    const restored = renderHook(useWorkspace);
+    const restored = renderHook(useWorkspace, createQueryWrapper());
     await waitFor(() => expect(restored.result.current.connected).toBe(true));
     expect(restored.result.current.thread?.conversation.id).toBe(first);
     expect(restored.result.current.draft).toBe("");
@@ -111,7 +118,7 @@ describe("Workspace safety characterization", () => {
     unmount();
     saveSession({ token: "secret", conversationId: "conv-1", branchId: api.branches[1].id, cursor: 7 });
     const release = api.deferNext(listRequest);
-    const restored = renderHook(useWorkspace);
+    const restored = renderHook(useWorkspace, createQueryWrapper());
     expect(loadSession().branchId).toBe(api.branches[1].id);
     expect(restored.result.current.busy).toBe(true);
     act(release);

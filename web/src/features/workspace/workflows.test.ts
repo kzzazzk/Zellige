@@ -1,3 +1,4 @@
+import { createQueryWrapper } from "../../test/queryWrapper";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { apiFixture } from "../../test/apiFixture";
@@ -6,7 +7,7 @@ import { useWorkspace } from "../useWorkspace";
 
 async function setup() {
   const api = apiFixture();
-  const hook = renderHook(useWorkspace);
+  const hook = renderHook(useWorkspace, createQueryWrapper());
   await act(async () => { expect(await hook.result.current.connect(" secret ")).toBe(true); });
   return { api, ...hook };
 }

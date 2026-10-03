@@ -1,3 +1,4 @@
+import { createQueryWrapper } from "../../test/queryWrapper";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceNavigation } from "../../app/useWorkspaceNavigation";
@@ -9,6 +10,7 @@ import { loadSession, saveSession } from "../../storage/session";
 import { apiFixture } from "../../test/apiFixture";
 import { useWorkspace } from "../useWorkspace";
 import { useDiagnostics } from "./useDiagnostics";
+import { workspaceKeys } from "./queryKeys";
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { "Content-Type": "application/json" },
@@ -48,12 +50,13 @@ async function setup(navigation?: WorkspaceNavigation) {
   await createConversation(client, "Beta");
   await createProfile(client, "Primary");
   saveSession({ token: "", conversationId: "", branchId: "", cursor: 11 });
-  const hook = renderHook(() => useWorkspace(navigation));
+  const provider = createQueryWrapper();
+  const hook = renderHook(() => useWorkspace(navigation), provider);
   await act(async () => { expect(await hook.result.current.connect("secret")).toBe(true); });
   if (navigation) await waitFor(() => expect(hook.result.current.thread?.conversation.id).toBe("conv-1"));
   else await act(async () => { expect(await hook.result.current.selectConversation("conv-1")).toBe(true); });
   api.fetchMock.mockClear();
-  return { api, client, ...hook };
+  return { api, client, queryClient: provider.queryClient, ...hook };
 }
 
 describe("manual cursor synchronization", () => {
@@ -93,21 +96,26 @@ describe("manual cursor synchronization", () => {
   it.each(["item", "branch", "run"])("refreshes the selected thread for %s metadata", async (type) => {
     const { api, result } = await setup();
     const thread = result.current.thread;
+    api.branches[0].name = `Updated after ${type}`;
     changesPages(api, page([change(type)]));
     await act(async () => { expect(await result.current.readChanges()).toBe(true); });
     expectReads(api, 1, 1, 0);
     expect(result.current.thread).not.toBe(thread);
+    expect(result.current.thread?.branch.name).toBe(`Updated after ${type}`);
   });
 
   it.each(["runtime_profile", "runtime_profile_version"])("refreshes profiles for global %s metadata", async (type) => {
-    const { api, result } = await setup();
+    const { api, client, result } = await setup();
     const before = result.current;
+    await createProfile(client, `Updated after ${type}`);
+    api.fetchMock.mockClear();
     changesPages(api, page([change(type, null)]));
     await act(async () => { expect(await result.current.readChanges()).toBe(true); });
     expectReads(api, 0, 0, 1);
     expect(result.current.page).toBe(before.page);
     expect(result.current.thread).toBe(before.thread);
     expect(result.current.profiles).not.toBe(before.profiles);
+    expect(result.current.profiles[1].runtime_profile.name).toBe(`Updated after ${type}`);
   });
 
   it.each(["future_entity", "context_pack", "artifact", "item"])("conservatively refreshes frontend state for global %s metadata", async (type) => {
@@ -165,8 +173,13 @@ describe("manual cursor synchronization", () => {
   });
 
   it.each(["list", "thread", "profiles"])("keeps every canonical result staged when the %s refresh fails", async (read) => {
-    const { api, client, result } = await setup();
+    const { api, client, result, queryClient } = await setup();
     const before = result.current;
+    const cached = queryClient.getQueriesData({ queryKey: workspaceKeys.all });
+    const cacheWrites: string[] = [];
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "success") cacheWrites.push(event.query.queryHash);
+    });
     api.conversations[0].title = "External title";
     api.branches[0].name = "External branch";
     await createProfile(client, "External profile");
@@ -184,6 +197,9 @@ describe("manual cursor synchronization", () => {
     expect(result.current.cursor).toBe(11);
     expect(loadSession().cursor).toBe(11);
     expect(result.current.failure?.status).toBe(500);
+    expect(cacheWrites).toEqual([]);
+    for (const [key, value] of cached) expect(queryClient.getQueryData(key)).toBe(value);
+    unsubscribe();
     api.fetchMock.mockClear();
     changesPages(api, page([change("future_entity", null)]));
     await act(async () => { expect(await result.current.readChanges()).toBe(true); });

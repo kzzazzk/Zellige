@@ -5,9 +5,11 @@ import { listConversations, updateConversation } from "../../api/conversations";
 import { listProfiles } from "../../api/runs";
 import { ApiError, type Conversation, type Profile } from "../../api/types";
 import { loadThread } from "./loadThread";
-import type { useConversationState } from "./useConversationState";
+import type { useWorkspaceServerState } from "./useWorkspaceServerState";
 
-type Dependencies = ReturnType<typeof useConversationState> & Pick<Operation, "perform" | "record"> & {
+type Dependencies = Pick<ReturnType<typeof useWorkspaceServerState>,
+  "page" | "setPage" | "archived" | "setArchived" | "query" | "setQuery" | "thread" | "setThread"
+> & Pick<Operation, "perform" | "record"> & {
   client: Client;
   setProfiles: Dispatch<SetStateAction<Profile[]>>;
 };
@@ -25,7 +27,7 @@ export function conversationActions({ client, perform, record, page, setPage, ar
 
   function search(value: string, showArchived = archived) {
     return perform(async () => {
-      setPage(record(await listConversations(client, showArchived, value)));
+      setPage(record(await listConversations(client, showArchived, value)), { archived: showArchived, query: value });
       setArchived(showArchived);
       setQuery(value);
     });

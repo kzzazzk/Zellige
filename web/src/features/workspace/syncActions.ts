@@ -5,11 +5,11 @@ import { listConversations } from "../../api/conversations";
 import { listProfiles } from "../../api/runs";
 import type { Profile } from "../../api/types";
 import { loadThread } from "./loadThread";
-import type { useConversationState } from "./useConversationState";
+import type { useWorkspaceServerState } from "./useWorkspaceServerState";
 import type { useDiagnostics } from "./useDiagnostics";
 import type { Operation } from "./useWorkspaceOperation";
 
-type Dependencies = Pick<ReturnType<typeof useConversationState>,
+type Dependencies = Pick<ReturnType<typeof useWorkspaceServerState>,
   "archived" | "query" | "thread" | "setPage" | "setThread"
 > & Pick<ReturnType<typeof useDiagnostics>,
   "cursor" | "setCursor" | "setChanges" | "setHasMoreChanges"
