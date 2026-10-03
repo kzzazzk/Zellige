@@ -284,6 +284,26 @@ class RunListResponse(APIModel):
     runs: list[Run]
 
 
+class ClaimRunRequest(APIModel):
+    harness: NonEmptyString
+
+
+class RunWorkPackage(APIModel):
+    run: Run
+    runtime_profile_version: RuntimeProfileVersion
+    items: list[Item]
+    context_pack_versions: list[ContextPackVersion]
+
+
+class ClaimRunResponse(APIModel):
+    work: RunWorkPackage | None
+
+
+class FinishRunRequest(APIModel):
+    status: Literal["completed", "failed"]
+    result: JsonObject
+
+
 class Change(APIModel):
     seq: int
     conversation_id: str | None

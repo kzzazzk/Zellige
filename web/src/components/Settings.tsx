@@ -109,7 +109,8 @@ export function Settings(w: SettingsProps) {
           <h2 className="text-sm font-medium">Perfiles de ejecución</h2>
           <p className="text-xs leading-5 text-muted-foreground">
             Los perfiles se pueden usar en cualquier conversación. Las
-            ejecuciones se guardan en cola; aún no hay agentes conectados.
+            ejecuciones se guardan en cola. Codex local requiere iniciar un worker
+            con acceso al workspace y puede modificar archivos dentro del root permitido.
           </p>
           <ul className="divide-y">
             {w.profiles.map((profile) => (
@@ -150,6 +151,7 @@ export function Settings(w: SettingsProps) {
               >
                 <NativeSelectOption value="general">General</NativeSelectOption>
                 <NativeSelectOption value="code">Código</NativeSelectOption>
+                <NativeSelectOption value="codex">Codex local</NativeSelectOption>
                 <NativeSelectOption value="research">
                   Investigación
                 </NativeSelectOption>

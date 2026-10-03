@@ -227,7 +227,7 @@ describe("Conversation app", () => {
     ).toBeInTheDocument();
   });
 
-  it("creates a selectable profile and persists a queued execution", async () => {
+  it("creates a selectable Codex local profile and persists a queued execution", async () => {
     const api = apiFixture();
     render(<App />);
     await connect();
@@ -236,10 +236,13 @@ describe("Conversation app", () => {
     fireEvent.change(screen.getByLabelText("Nombre del perfil"), {
       target: { value: "Investigador" },
     });
+    expect(screen.getByRole("option", { name: "Codex local" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Tipo de perfil"), { target: { value: "codex" } });
     fireEvent.click(screen.getByRole("button", { name: "Crear perfil" }));
     expect(
       await within(screen.getByRole("dialog")).findByText("Investigador"),
     ).toBeInTheDocument();
+    expect(api.profiles[0].version.definition).toEqual({ mode: "code", harness: "codex", workspace: ".", sandbox: "workspace-write" });
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Cerrar",

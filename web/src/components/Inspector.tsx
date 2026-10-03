@@ -25,6 +25,23 @@ type InspectorProps = {
   onClose: () => void;
 };
 
+const statusLabels: Record<Run["status"], string> = {
+  queued: "En cola", running: "En ejecución", completed: "Completada",
+  failed: "Fallida", cancelled: "Cancelada",
+};
+
+function runMessage(run: Run): string | null {
+  const result = run.result;
+  if (!result) return null;
+  const error = result.error;
+  if (run.status === "failed") {
+    if (typeof error === "string") return error;
+    if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+    if (typeof result.message === "string") return result.message;
+  }
+  return typeof result.summary === "string" ? result.summary : null;
+}
+
 export function Inspector(w: InspectorProps) {
   const { onClose } = w;
   return (
@@ -60,9 +77,12 @@ export function Inspector(w: InspectorProps) {
                       )?.runtime_profile.name ?? "Perfil guardado"}
                     </span>
                     <span className="rounded bg-secondary px-2 py-0.5">
-                      {run.status === "queued" ? "En cola" : run.status}
+                      {statusLabels[run.status]}
                     </span>
                   </div>
+                  {runMessage(run) && (
+                    <p className="whitespace-pre-wrap break-words text-sm">{runMessage(run)}</p>
+                  )}
                   <code className="block break-all text-[10px] text-muted-foreground">
                     {run.id}
                   </code>
@@ -70,7 +90,8 @@ export function Inspector(w: InspectorProps) {
               ))}
             </ul>
             <p className="text-muted-foreground">
-              Las ejecuciones en cola todavía no generan respuestas.
+              Inicia el worker local para ejecutar perfiles Codex. Usa Sincronizar
+              cambios para actualizar los estados y resultados.
             </p>
           </section>
           <details className="space-y-3 border-t pt-4">

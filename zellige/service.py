@@ -189,12 +189,7 @@ class ZelligeService:
                 "SELECT * FROM runs WHERE conversation_id = ? ORDER BY created_at DESC, id LIMIT 50",
                 (conversation_id,),
             ):
-                run = _row(row)
-                run["context_pack_version_ids"] = [entry[0] for entry in connection.execute(
-                    "SELECT context_pack_version_id FROM run_context_packs WHERE run_id = ? ORDER BY ordinal",
-                    (row["id"],),
-                )]
-                runs.append(run)
+                runs.append(self._run(connection, row))
         return {"runs": runs}
 
     def create_branch(self, conversation_id: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -335,23 +330,94 @@ class ZelligeService:
             ).fetchone()
             if branch is None:
                 raise ServiceError(404, "branch_not_found", "branch not found")
-            current = branch["head_item_id"]
-            items: list[dict[str, Any]] = []
-            seen: set[str] = set()
-            while current is not None:
-                if current in seen:
-                    raise ServiceError(500, "history_cycle", "cycle detected in item ancestry")
-                seen.add(current)
-                row = connection.execute(
-                    "SELECT * FROM items WHERE id = ? AND conversation_id = ?",
-                    (current, conversation_id),
-                ).fetchone()
-                if row is None:
-                    raise ServiceError(500, "broken_history", "branch ancestry is incomplete")
-                items.append(_row(row))
-                current = row["parent_item_id"]
-        items.reverse()
+            items = self._ancestry(connection, conversation_id, branch["head_item_id"])
         return {"branch": _row(branch), "items": items}
+
+    @staticmethod
+    def _ancestry(
+        connection: sqlite3.Connection, conversation_id: str, head_item_id: str | None
+    ) -> list[dict[str, Any]]:
+        current = head_item_id
+        items: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        while current is not None:
+            if current in seen:
+                raise ServiceError(500, "history_cycle", "cycle detected in item ancestry")
+            seen.add(current)
+            row = connection.execute(
+                "SELECT * FROM items WHERE id = ? AND conversation_id = ?",
+                (current, conversation_id),
+            ).fetchone()
+            if row is None:
+                raise ServiceError(500, "broken_history", "item ancestry is incomplete")
+            items.append(_row(row))
+            current = row["parent_item_id"]
+        items.reverse()
+        return items
+
+    @staticmethod
+    def _run(connection: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
+        run = _row(row)
+        run["context_pack_version_ids"] = [entry[0] for entry in connection.execute(
+            "SELECT context_pack_version_id FROM run_context_packs WHERE run_id = ? ORDER BY ordinal",
+            (row["id"],),
+        )]
+        return run
+
+    def claim_run(self, harness: str) -> dict[str, Any]:
+        if not isinstance(harness, str) or not harness:
+            raise ServiceError(400, "invalid_request", "harness must be a non-empty string")
+        with self.database.transaction(immediate=True) as connection:
+            row = connection.execute(
+                """SELECT runs.* FROM runs
+                   JOIN runtime_profile_versions AS profile ON profile.id = runs.runtime_profile_version_id
+                   WHERE runs.status = 'queued'
+                     AND json_extract(profile.definition_json, '$.harness') = ?
+                   ORDER BY runs.created_at, runs.id LIMIT 1""",
+                (harness,),
+            ).fetchone()
+            if row is None:
+                return {"work": None}
+            items = self._ancestry(connection, row["conversation_id"], row["input_head_item_id"])
+            profile = _row(connection.execute(
+                "SELECT * FROM runtime_profile_versions WHERE id = ?",
+                (row["runtime_profile_version_id"],),
+            ).fetchone())
+            contexts = [_row(entry) for entry in connection.execute(
+                """SELECT versions.* FROM run_context_packs AS pinned
+                   JOIN context_pack_versions AS versions ON versions.id = pinned.context_pack_version_id
+                   WHERE pinned.run_id = ? ORDER BY pinned.ordinal""",
+                (row["id"],),
+            )]
+            connection.execute(
+                "UPDATE runs SET status = 'running', started_at = ? WHERE id = ?",
+                (now_us(), row["id"]),
+            )
+            run = self._run(connection, connection.execute(
+                "SELECT * FROM runs WHERE id = ?", (row["id"],),
+            ).fetchone())
+            self._change(connection, "run", run["id"], run, run["conversation_id"])
+            return {"work": {"run": run, "runtime_profile_version": profile,
+                             "items": items, "context_pack_versions": contexts}}
+
+    def finish_run(self, run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        if body.get("status") not in {"completed", "failed"} or not isinstance(body.get("result"), dict):
+            raise ServiceError(400, "invalid_request", "terminal status and result object are required")
+        with self.database.transaction(immediate=True) as connection:
+            row = connection.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
+            if row is None:
+                raise ServiceError(404, "run_not_found", "run not found")
+            if row["status"] != "running":
+                raise ServiceError(409, "run_conflict", "only running runs can be finished")
+            connection.execute(
+                "UPDATE runs SET status = ?, result_json = ?, completed_at = ? WHERE id = ?",
+                (body["status"], _json(body["result"]), now_us(), run_id),
+            )
+            run = self._run(connection, connection.execute(
+                "SELECT * FROM runs WHERE id = ?", (run_id,),
+            ).fetchone())
+            self._change(connection, "run", run_id, run, run["conversation_id"])
+            return run
 
     def create_runtime_profile(self, body: dict[str, Any]) -> dict[str, Any]:
         profile_id = body.get("id") or _id("profile")

@@ -11,8 +11,18 @@ export function listRuns(client: Client, conversationId: string) {
   );
 }
 
-export function createProfile(client: Client, name: string, mode = "general") {
-  const body = { name, definition: { mode } } satisfies RequestBody<"createRuntimeProfile">;
+export function profileDefinition(kind: string): RequestBody<"createRuntimeProfile">["definition"] {
+  return kind === "codex"
+    ? { mode: "code", harness: "codex", workspace: ".", sandbox: "workspace-write" }
+    : { mode: kind };
+}
+
+export function createProfile(
+  client: Client,
+  name: string,
+  definition: RequestBody<"createRuntimeProfile">["definition"] | string = { mode: "general" },
+) {
+  const body = { name, definition: typeof definition === "string" ? profileDefinition(definition) : definition } satisfies RequestBody<"createRuntimeProfile">;
   return client.request<ResponseBody<"createRuntimeProfile">>("/v1/runtime-profiles", {
     method: "POST",
     body: JSON.stringify(body),

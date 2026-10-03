@@ -14,6 +14,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 zellige = "zellige.server:main"
+zellige-worker = "zellige.worker:main"
 zellige-export-schemas = "zellige.api_models:export_schemas"
 
 [tool.unittest]

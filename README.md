@@ -14,6 +14,7 @@ artifact storage.
 - Canonical conversations with branches and immutable structured items.
 - Atomic optimistic appends using `expected_head_item_id` and HTTP 409 conflicts.
 - Runs tied to immutable runtime-profile and context-pack versions.
+- A separate HTTP worker executes local Codex against pinned run snapshots.
 - WAL, foreign keys, short write transactions, and restart persistence.
 - A transactional `changes` outbox for cursor-based incremental sync.
 - Artifact bytes stored outside SQLite by SHA-256.
@@ -53,6 +54,20 @@ curl -sS http://127.0.0.1:8787/v1/conversations \
   --data '{"title":"First conversation"}'
 ```
 
+Run the local Codex worker in a second terminal after Codex CLI is installed and
+authenticated. The workspace root is a security boundary: profiles can only
+select relative directories beneath it.
+
+```sh
+export ZELLIGE_API_TOKEN='replace-with-the-same-value'
+export ZELLIGE_WORKSPACE_ROOT='/path/to/allowed/workspace'
+uv run zellige-worker
+```
+
+Use `uv run zellige-worker --once` to claim at most one queued Codex run.
+See [Phase 5 worker setup and limits](docs/development/phase-5-local-codex-worker.md)
+for profiles, sandbox modes, runner API and failure handling.
+
 ## Open the web app
 
 With Node.js 24 and npm, build the static frontend once and start Zellige in
@@ -77,10 +92,14 @@ tab's `sessionStorage`; the appearance preference uses `localStorage`.
 - Create execution profiles in Settings and queue runs against a saved history.
 - Use the details panel for persisted runs, IDs, HTTP responses and manual outbox reads.
 
-There is no runner, generated assistant reply, automatic sync or account login
-yet. Use **Actualizar** to pull changes from another device. A concurrent append
-returns 409, refreshes history, keeps the draft, and never retries silently.
-Archive is reversible organization, not deletion; archived histories remain writable.
+Codex-local execution is available through the separate `zellige-worker` process.
+Create a **Codex local** profile, queue a run, and start a worker with the same API
+token and an explicit workspace root. Run state remains canonical in the daemon;
+use **Sincronizar cambios** in the details panel to pull worker transitions and
+results. Automatic browser sync and account login are not implemented yet. A
+concurrent append returns 409, refreshes history, keeps the draft, and never
+retries silently. Archive is reversible organization, not deletion; archived
+histories remain writable.
 
 For frontend development with live reload, keep the backend running and use
 `npm --prefix web run dev` in another terminal. Open `http://127.0.0.1:5173`;
@@ -166,8 +185,8 @@ Backend deployment and release publishing remain disabled.
 ## Scope
 
 This is not yet a production server. It has no user/account model, rate limiting,
-TLS termination, runner integration, streaming upload, outbox compaction, backup
-automation, or stable public API guarantee.
+TLS termination, distributed runner scheduling/recovery, streaming upload, outbox
+compaction, backup automation, or stable public API guarantee.
 
 ### Workspace URLs
 
