@@ -1,20 +1,21 @@
 import type { Client } from "./client";
-import type { Profile, Run } from "./types";
+import type { RequestBody, ResponseBody } from "./types";
 
 export function listProfiles(client: Client) {
-  return client.request<{ profiles: Profile[] }>("/v1/runtime-profiles");
+  return client.request<ResponseBody<"listRuntimeProfiles">>("/v1/runtime-profiles");
 }
 
 export function listRuns(client: Client, conversationId: string) {
-  return client.request<{ runs: Run[] }>(
+  return client.request<ResponseBody<"listConversationRuns">>(
     `/v1/conversations/${encodeURIComponent(conversationId)}/runs`,
   );
 }
 
 export function createProfile(client: Client, name: string, mode = "general") {
-  return client.request<Profile>("/v1/runtime-profiles", {
+  const body = { name, definition: { mode } } satisfies RequestBody<"createRuntimeProfile">;
+  return client.request<ResponseBody<"createRuntimeProfile">>("/v1/runtime-profiles", {
     method: "POST",
-    body: JSON.stringify({ name, definition: { mode } }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -24,13 +25,14 @@ export function createRun(
   branchId: string,
   profileVersionId: string,
 ) {
-  return client.request<Run>("/v1/runs", {
+  const body = {
+    conversation_id: conversationId,
+    branch_id: branchId,
+    runtime_profile_version_id: profileVersionId,
+    request: {},
+  } satisfies RequestBody<"createRun">;
+  return client.request<ResponseBody<"createRun">>("/v1/runs", {
     method: "POST",
-    body: JSON.stringify({
-      conversation_id: conversationId,
-      branch_id: branchId,
-      runtime_profile_version_id: profileVersionId,
-      request: {},
-    }),
+    body: JSON.stringify(body),
   });
 }

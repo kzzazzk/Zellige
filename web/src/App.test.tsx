@@ -188,9 +188,10 @@ describe("Conversation app", () => {
       expect(screen.queryByLabelText("Texto editado")).not.toBeInTheDocument(),
     );
     expect(api.branches).toHaveLength(2);
-    expect(api.items[0].payload.content).toEqual([
-      { type: "text", text: "Original" },
-    ]);
+    expect(api.items[0].payload).toMatchObject({
+      type: "message",
+      content: [{ type: "text", text: "Original" }],
+    });
     fireEvent.change(screen.getByLabelText("Rama"), {
       target: { value: "branch-1" },
     });

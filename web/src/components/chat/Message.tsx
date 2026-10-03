@@ -20,7 +20,8 @@ export function Message({
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const text = messageText(item);
-  const user = item.kind === "message" && item.payload.role === "user";
+  const role = "role" in item.payload ? item.payload.role : undefined;
+  const user = item.kind === "message" && role === "user";
   async function copy() {
     try {
       await navigator.clipboard.writeText(text);
@@ -46,7 +47,7 @@ export function Message({
         <span className={cn(!user && "text-brand-detail")}>
           {user
             ? "Tú"
-            : item.payload.role === "assistant"
+            : role === "assistant"
               ? "Asistente"
               : item.kind}
         </span>

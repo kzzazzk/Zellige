@@ -79,6 +79,8 @@ export function apiFixture() {
         conversation_id: conversation.id,
         name: "main",
         head_item_id: null,
+        created_at: 1,
+        updated_at: 1,
       };
       conversations.push(conversation);
       branches.push(branch);
@@ -110,6 +112,8 @@ export function apiFixture() {
             conversation_id: conversation.id,
             name: String(body.name),
             head_item_id: head,
+            created_at: 1,
+            updated_at: 1,
           };
           branches.push(branch);
           return json(branch, 201);
@@ -133,8 +137,11 @@ export function apiFixture() {
             conflict = false;
             const external: Item = {
               id: `external-${items.length + 1}`,
+              conversation_id: conversation.id,
               parent_item_id: branch.head_item_id,
+              run_id: null,
               kind: "message",
+              payload_schema_version: 1,
               payload: {
                 type: "message",
                 role: "user",
@@ -151,9 +158,12 @@ export function apiFixture() {
             return error("head_conflict", "branch head has changed", 409);
           const item: Item = {
             id: `item-${items.length + 1}`,
+            conversation_id: conversation.id,
             parent_item_id: branch.head_item_id,
+            run_id: null,
             kind: "message",
-            payload: body.payload as Record<string, unknown>,
+            payload_schema_version: 1,
+            payload: body.payload as Item["payload"],
             created_at: 1,
           };
           items.push(item);
@@ -170,8 +180,15 @@ export function apiFixture() {
           id: `profile-${profiles.length + 1}`,
           name: String(body.name),
           description: null,
+          created_at: 1,
         },
-        version: { id: `profilev-${profiles.length + 1}`, version: 1, definition: {} },
+        version: {
+          id: `profilev-${profiles.length + 1}`,
+          runtime_profile_id: `profile-${profiles.length + 1}`,
+          version: 1,
+          definition: {},
+          created_at: 1,
+        },
       };
       profiles.push(profile);
       return json(profile, 201);
@@ -184,11 +201,18 @@ export function apiFixture() {
       if (!branch) return error("not_found", "branch not found", 404);
       const run: Run = {
         id: `run-${runs.length + 1}`,
+        conversation_id: branch.conversation_id,
+        branch_id: branch.id,
         status: "queued",
         input_head_item_id: branch.head_item_id,
         runtime_profile_version_id: String(body.runtime_profile_version_id),
+        provider_session_id: null,
+        request: {},
+        result: null,
         context_pack_version_ids: [],
         created_at: 1,
+        started_at: null,
+        completed_at: null,
       };
       runs.push(run);
       runConversations.set(run.id, branch.conversation_id);
