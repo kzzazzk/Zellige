@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useMotionValueEvent, useScroll } from "motion/react";
 import { Plus } from "lucide-react";
 import { emblem } from "./brand";
 import { useT } from "@/i18n";
@@ -26,16 +25,34 @@ export function Panorama({ reduced }: { reduced: boolean }) {
   const t = useT();
   const surface = useRef<HTMLDivElement>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
-  const { scrollYProgress } = useScroll({ target: surface, offset: ["start end", "start 0.38"] });
 
   useEffect(() => {
     const element = surface.current;
     if (!element || reduced) return;
     let width = 0;
-    const observer = new ResizeObserver(() => {
-      if (element.clientWidth === width) return;
-      width = element.clientWidth;
+    let tileSize = 0;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      // Measure the current position, including layout changes in the story above.
+      // Spread assembly over most of the viewport instead of snapping together
+      // as soon as the first row enters it.
+      const progress = Math.min(1, Math.max(0,
+        (innerHeight * 0.95 - element.getBoundingClientRect().top) / (innerHeight * 0.7),
+      ));
+      const eased = progress * progress * (3 - 2 * progress);
+      element.style.setProperty("--assembly", eased.toFixed(5));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    const resize = () => {
+      cancelAnimationFrame(frame);
+      update();
       const tile = parseFloat(getComputedStyle(element.parentElement!).getPropertyValue("--tile"));
+      if (element.clientWidth === width && tile === tileSize) return;
+      width = element.clientWidth;
+      tileSize = tile;
       const columns = Math.ceil(width / tile);
       const next: Piece[] = [];
       for (let row = 0; row < 3; row += 1) {
@@ -57,26 +74,32 @@ export function Panorama({ reduced }: { reduced: boolean }) {
         }
       }
       setPieces(next);
-    });
+    };
+    // Set the initial progress before replacing the static fallback with pieces.
+    resize();
+    const observer = new ResizeObserver(resize);
     observer.observe(element);
+    observer.observe(document.documentElement);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
     return () => {
       observer.disconnect();
-      setPieces([]);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      cancelAnimationFrame(frame);
     };
   }, [reduced]);
 
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    surface.current?.style.setProperty("--p", (1 - (1 - progress) ** 3).toFixed(3));
-  });
+  const animatedPieces = reduced ? [] : pieces;
 
   return (
     <figure id="panorama" className="mosaic-panorama relative mx-4 sm:mx-[30px]" aria-label={t.panorama.label}>
       <div
         ref={surface}
         aria-hidden="true"
-        className={`ceramic mosaic-surface relative h-[calc(var(--tile)*3)] outline outline-offset-[6px] outline-brass ${pieces.length ? "is-assembling overflow-visible" : "overflow-hidden"}`}
+        className={`ceramic mosaic-surface relative h-[calc(var(--tile)*3)] outline outline-offset-[6px] outline-brass ${animatedPieces.length ? "is-assembling overflow-visible" : "overflow-hidden"}`}
       >
-        {pieces.map((piece) => (
+        {animatedPieces.map((piece) => (
           <div key={piece.key} className="mosaic-piece" ref={(node) => {
             if (node) for (const [name, value] of Object.entries(piece.vars)) node.style.setProperty(name, value);
           }} />

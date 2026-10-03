@@ -131,7 +131,7 @@ jobs:
   publish:
     name: Deploy validated pilot
     needs: [required]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/minimal-mvp-chat-web'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/minimal-mvp-chat-web' && !contains(github.event.head_commit.message, '[skip pilot deploy]')
     uses: ./.github/workflows/deploy-pilot.yml
     secrets:
       VERCEL_REPOSITORY_TOKEN: ${{ secrets.VERCEL_TOKEN }}

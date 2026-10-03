@@ -218,7 +218,7 @@
     background-size: 70px 70px;
   }
   .mosaic-piece {
-    --rest: calc(1 - var(--p, 1));
+    --rest: calc(1 - var(--assembly, 0));
     position: absolute;
     height: var(--tile);
     background: var(--ceramic-base) url("./assets/ceramic.webp") var(--bx) var(--by) / var(--period) var(--period);
