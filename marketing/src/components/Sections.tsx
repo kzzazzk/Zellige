@@ -74,7 +74,7 @@ export function Panorama({ reduced }: { reduced: boolean }) {
       <div
         ref={surface}
         aria-hidden="true"
-        className={`ceramic mosaic-surface relative h-[calc(var(--tile)*3)] overflow-hidden outline outline-offset-[6px] outline-brass ${pieces.length ? "is-assembling" : ""}`}
+        className={`ceramic mosaic-surface relative h-[calc(var(--tile)*3)] outline outline-offset-[6px] outline-brass ${pieces.length ? "is-assembling overflow-visible" : "overflow-hidden"}`}
       >
         {pieces.map((piece) => (
           <div key={piece.key} className="mosaic-piece" ref={(node) => {
