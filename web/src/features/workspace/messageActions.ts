@@ -8,6 +8,8 @@ import { draftKey as getDraftKey } from "./draftKey";
 import { loadThread } from "./loadThread";
 
 type Dependencies = Pick<Operation, "perform" | "record" | "setFailure"> & {
+  onBranch?: (conversationId: string, branchId: string) => void;
+  onCreated?: (id: string) => void;
   client: Client;
   thread: Thread | null;
   setThread: Dispatch<SetStateAction<Thread | null>>;
@@ -16,7 +18,7 @@ type Dependencies = Pick<Operation, "perform" | "record" | "setFailure"> & {
   clearDraft: (key: string) => void;
 };
 export function messageActions({ client, thread, setThread, perform, record, setFailure,
-  refreshList, transferDraft, clearDraft }: Dependencies) {
+  refreshList, transferDraft, clearDraft, onCreated, onBranch }: Dependencies) {
   function sendMessage(text: string) {
     return perform(async () => {
       if (!text.trim()) throw new ApiError("Escribe un mensaje primero.", null);
@@ -35,6 +37,7 @@ export function messageActions({ client, thread, setThread, perform, record, set
         setThread(active);
         const createdKey = getDraftKey(active);
         transferDraft("new", createdKey, text);
+        onCreated?.(active.conversation.id);
       }
       const target = active;
       try {
@@ -96,6 +99,7 @@ export function messageActions({ client, thread, setThread, perform, record, set
         await createBranch(client, target.conversation.id, name.trim(), parent),
       );
       setThread(await loadThread(client, target.conversation.id, branch.id));
+      onBranch?.(target.conversation.id, branch.id);
       if (editedText !== undefined) {
         record(
           await appendMessage(
