@@ -2,6 +2,9 @@ name: Deploy private pilot
 
 on:
   workflow_call:
+    secrets:
+      VERCEL_REPOSITORY_TOKEN:
+        required: false
   workflow_run:
     workflows: [CI pilot]
     types: [completed]
@@ -40,7 +43,7 @@ jobs:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PILOT_PROJECT_ID: ${{ vars.VERCEL_PILOT_PROJECT_ID }}
           VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: ${{ vars.VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN || secrets.VERCEL_TOKEN }}
         run: node deploy/resolve-pilot.mjs
       - name: Check changes since this application was deployed
         id: scope
@@ -50,7 +53,7 @@ jobs:
           APPROVED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PILOT_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN || secrets.VERCEL_TOKEN }}
         run: node deploy/deployment-scope.mjs
       - name: Publish the exact branch commit approved by CI
         if: steps.scope.outputs.changed == 'true'
@@ -60,5 +63,5 @@ jobs:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PILOT_PROJECT_ID: ${{ env.VERCEL_PILOT_PROJECT_ID }}
           VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: ${{ env.VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN || secrets.VERCEL_TOKEN }}
         run: node deploy/publish-pilot.mjs

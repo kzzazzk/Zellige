@@ -133,4 +133,5 @@ jobs:
     needs: [required]
     if: github.event_name == 'push' && github.ref == 'refs/heads/minimal-mvp-chat-web'
     uses: ./.github/workflows/deploy-pilot.yml
-    secrets: inherit
+    secrets:
+      VERCEL_REPOSITORY_TOKEN: ${{ secrets.VERCEL_TOKEN }}
