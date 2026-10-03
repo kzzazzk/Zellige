@@ -7,7 +7,7 @@ export function affects(target, paths) {
   const shared = new Set(['deploy/deployment-scope.mjs']);
   const specific = {
     marketing: new Set(['deploy/build-marketing.mjs', 'deploy/vercel-marketing.json', '.github/workflows/deploy-marketing.yml']),
-    pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', '.github/workflows/deploy-pilot.yml']),
+    pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', 'deploy/resolve-pilot.mjs', '.github/workflows/deploy-pilot.yml']),
   };
   const prefixes = { marketing: ['marketing/'], pilot: ['web/', 'zellige/', 'migrations/', 'schemas/'] };
   if (!specific[target]) throw new Error('Unknown deployment target');
