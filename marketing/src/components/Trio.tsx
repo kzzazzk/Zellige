@@ -15,9 +15,9 @@ export type Piece = Exclude<Layer, "centre">;
 export const pieces: Piece[] = ["crown", "cobalt", "points"];
 
 const labelPlacement: Record<Piece, string> = {
-  crown: "left-1/2 top-[70%] -translate-x-1/2",
-  cobalt: "left-[0%] -top-[2%] sm:-left-[6%]",
-  points: "-right-[2%] top-[36%] sm:-right-[12%]",
+  crown: "-left-[2%] bottom-[2%] sm:-left-[10%] sm:bottom-[6%]",
+  cobalt: "left-[0%] -top-[4%] sm:-left-[8%] sm:top-[2%]",
+  points: "-right-[2%] top-[12%] sm:-right-[12%] sm:top-[66%]",
 };
 
 /** One layer of the emblem, small, to name it in labels and lists. */
@@ -59,7 +59,7 @@ export function Trio({
         </span>
       ))}
       {greeting && (
-        <p className="tile-greeting absolute -bottom-[14%] left-1/2 w-max max-w-[240px] -translate-x-1/2 rounded-2xl border border-border bg-popover px-3 py-2 text-xs leading-snug text-foreground shadow-[0_12px_30px_-14px_rgb(20_43_53/0.4)] sm:top-[4%] sm:right-[-16%] sm:bottom-auto sm:left-auto sm:w-auto sm:max-w-[200px] sm:translate-x-0 sm:rounded-bl-sm sm:px-3.5 sm:py-2.5 sm:text-sm">
+        <p className="tile-greeting absolute -bottom-[30%] left-1/2 w-max max-w-[240px] -translate-x-1/2 rounded-2xl border border-border bg-popover px-3 py-2 text-xs leading-snug text-foreground shadow-[0_12px_30px_-14px_rgb(20_43_53/0.4)] sm:top-[4%] sm:right-[-16%] sm:bottom-auto sm:left-auto sm:w-auto sm:max-w-[200px] sm:translate-x-0 sm:rounded-bl-sm sm:px-3.5 sm:py-2.5 sm:text-sm">
           <strong className="font-semibold">{t.zel.hello}</strong>
           <br />
           {t.zel.helloLine}

@@ -328,7 +328,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .tile-intro .zel-layer:not(.layer-centre) { animation: layer-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1.1) both; }
-  .tile-intro .layer-centre, .tile-intro .zel-face { animation: centre-in 0.7s 0.1s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: center; transform-box: fill-box; }
+  .tile-intro .layer-centre, .tile-intro .zel-face-layer { animation: centre-in 0.7s 0.1s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: center; }
   .tile-intro .layer-crown { animation-delay: 0.45s; }
   .tile-intro .layer-cobalt { animation-delay: 0.7s; }
   .tile-intro .layer-points { animation-delay: 0.95s; }
@@ -346,4 +346,38 @@
 }
 @keyframes label-in {
   from { opacity: 0; translate: 0 8px; }
+}
+
+/* Hero: the emblem's layers fly in from beyond the screen and lock around Zel. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-intro .layer-points { animation: fly-in 1.1s 0.25s cubic-bezier(0.16, 0.9, 0.24, 1.04) both; --fly: 2.8; --spin: 24deg; }
+  .hero-intro .layer-cobalt { animation: fly-in 1.1s 0.55s cubic-bezier(0.16, 0.9, 0.24, 1.04) both; --fly: 2.1; --spin: -18deg; }
+  .hero-intro .layer-crown { animation: fly-in 1s 0.85s cubic-bezier(0.16, 0.9, 0.24, 1.04) both; --fly: 1.5; --spin: 12deg; }
+  .hero-intro .layer-centre, .hero-intro .zel-face-layer { animation: centre-in 0.7s 1.35s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: center; }
+  .hero-intro .hero-greeting { animation: pop 0.6s 2.1s cubic-bezier(0.3, 1.5, 0.5, 1) both; transform-origin: bottom left; }
+  .hero .hero-copy { animation: arrive 0.8s 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+}
+@keyframes fly-in {
+  from { scale: var(--fly); rotate: var(--spin); opacity: 0; }
+  60% { opacity: 1; }
+}
+@layer components {
+  /* Scrolling away: the layers fall toward the story below, outer ones first. */
+  .hero-zel .layer-points { translate: 0 calc(var(--out, 0) * 150px); }
+  .hero-zel .layer-cobalt { translate: 0 calc(var(--out, 0) * 105px); }
+  .hero-zel .layer-crown { translate: 0 calc(var(--out, 0) * 65px); }
+  .hero-zel { opacity: max(0, calc(1 - var(--out, 0) * 1.6)); }
+  /* Pointing at a layer lifts it and dims the rest. */
+  .hero-zel .zel-layer { transition: translate 0.35s ease, filter 0.35s ease; }
+  .lift-crown .zel-layer:not(.layer-centre, .layer-crown),
+  .lift-cobalt .zel-layer:not(.layer-centre, .layer-cobalt),
+  .lift-points .zel-layer:not(.layer-centre, .layer-points) { filter: saturate(0.3) brightness(0.92); opacity: 0.45; }
+  .lift-crown .layer-crown, .lift-cobalt .layer-cobalt, .lift-points .layer-points {
+    translate: 0 -6px;
+    filter: drop-shadow(0 10px 14px rgb(11 29 41 / 0.35)) drop-shadow(0 0 16px rgb(212 182 120 / 0.55));
+  }
+  .hero-label-crown { left: 50%; top: 74%; translate: -50% 0; }
+  .hero-label-cobalt { left: 2%; top: 4%; }
+  .hero-label-points { right: -4%; top: 60%; }
+  .hero { background-image: radial-gradient(60% 50% at 50% 46%, rgb(201 169 98 / 0.12), transparent 70%); }
 }

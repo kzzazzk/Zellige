@@ -43,7 +43,7 @@ test('content is prerendered, so it reads without JavaScript', () => {
   assert.match(html, /<h1[^>]*id="hero-title"[^>]*>\s*<img[^>]*alt="zellige"/);
   for (const id of ['inicio', 'piezas', 'ramas', 'proyecto']) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, /pequeña piedra pulida/, 'The name is explained under the title');
-  assert.match(html, /Varias piedras hacen un azulejo\./);
+  assert.match(html, /Tu IA está repartida en mil apps\./);
   assert.match(html, /<details[^>]*open/, 'Principles use native disclosures');
 });
 
@@ -64,7 +64,7 @@ test('every referenced script, style, image and font is a local file in the buil
       const reference = attrs[attribute];
       if (!reference || reference.startsWith('#')) continue;
       // Navigation links and hreflang alternates point at pages, not assets.
-      if (name === 'a' || (name === 'link' && attrs.rel === 'alternate')) continue;
+      if (name === 'a' || (name === 'link' && ['alternate', 'canonical'].includes(attrs.rel))) continue;
       assert.ok(!reference.startsWith('data:'), `No inline data: URIs under the CSP: ${reference}`);
       localAsset(reference);
     }
@@ -161,11 +161,12 @@ test('theme follows the system or the saved choice, set before first paint', () 
   assert.match(sourceCss, /\.dark \{\s*color-scheme:\s*dark/);
 });
 
-test('brand art: approved ceramic mosaic, emblem, companion and moodboard wordmark', () => {
+test('brand art: approved ceramic mosaic, emblem layers, emblem and moodboard wordmark', () => {
   const asset = (prefix, extension) => builtFiles.find((file) =>
     file.startsWith(`assets/${prefix}`) && file.endsWith(extension));
   for (const [prefix, extension] of [
-    ['ceramic-', '.webp'], ['emblem-', '.webp'], ['companion-hello-', '.webp'], ['zellige-wordmark-', '.svg'],
+    ['ceramic-', '.webp'], ['emblem-', '.webp'], ['layer-centre-', '.webp'], ['layer-crown-', '.webp'],
+    ['layer-cobalt-', '.webp'], ['layer-points-', '.webp'], ['zellige-wordmark-', '.svg'],
   ]) assert.ok(asset(prefix, extension), `${prefix}*${extension} is published`);
   // Superseded artwork never reaches the public build.
   assert.ok(!builtFiles.some((file) => /zellige-mosaic|rosette-v2|ceramic-grain|interlocked/.test(file)));
@@ -175,11 +176,13 @@ test('brand art: approved ceramic mosaic, emblem, companion and moodboard wordma
 });
 
 test('each language has its own prerendered page, linked with hreflang', () => {
-  const pages = { es: html, en: readFileSync(join(dist, 'en/index.html'), 'utf8') };
+  const pages = { es: readFileSync(join(dist, 'es/index.html'), 'utf8'), en: readFileSync(join(dist, 'en/index.html'), 'utf8') };
+  assert.equal(html, pages.es, 'The root serves the Spanish page until locale.js redirects');
   const titles = new Set();
   for (const [locale, page] of Object.entries(pages)) {
     assert.match(page, new RegExp(`<html lang="${locale}">`));
-    assert.match(page, /<link rel="alternate" hreflang="es" href="\/" \/>/);
+    assert.match(page, /<link rel="alternate" hreflang="es" href="\/es\/" \/>/);
+    assert.match(page, new RegExp(`<link rel="canonical" href="/${locale}/" />`));
     assert.match(page, /<link rel="alternate" hreflang="en" href="\/en\/" \/>/);
     assert.match(page, /<link rel="alternate" hreflang="x-default" href="\/" \/>/);
     assert.match(page, /<script src="\/locale\.js"><\/script>/, 'Browser-language redirect runs before paint');
@@ -187,6 +190,6 @@ test('each language has its own prerendered page, linked with hreflang', () => {
     titles.add(page.match(/<title>([^<]+)<\/title>/)?.[1]);
   }
   assert.equal(titles.size, 2, 'Titles are translated');
-  assert.match(pages.en, /Many stones make one tile\./);
-  assert.doesNotMatch(pages.en, /Varias piedras|Cómo encajan/, 'No Spanish copy left on the English page');
+  assert.match(pages.en, /Your AI is scattered across a dozen apps\./);
+  assert.doesNotMatch(pages.en, /Varias piedras|Mira cómo encaja|repartida/, 'No Spanish copy left on the English page');
 });

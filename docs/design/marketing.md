@@ -29,6 +29,13 @@ HTML and hydrates it; everything ships under the existing CSP (`'self'` only).
   one stone per scroll step while the companion changes mood. Without JS or with
   reduced motion the tile is shown assembled and the steps read as a list. The
   arch survives only as a faint outline behind the hero tile.
+- Hero (2026-10-03, "direction 1"): centred like the emblem — wordmark, Zel, one
+  line, one button. The emblem's layers fly in from beyond the screen and lock
+  around Zel; pointing at a layer lifts it and names it (no permanent labels);
+  scrolling away lets the layers fall and fade toward section 01. The dictionary
+  entry for "zellige" lives in section 01.
+- Languages: `/es/` and `/en/` are prerendered; `/` serves Spanish without JS and
+  `public/locale.js` sends it to the browser's language. No language switcher.
 - Zellige ornament is reserved for brand moments (wordmark, arch, mosaic, logo,
   mascot). Buttons and UI components stay plain and modern.
 - `marketing/src/gl/CeramicGlaze.tsx`: WebGL2 glaze highlight over the approved
@@ -37,7 +44,7 @@ HTML and hydrates it; everything ships under the existing CSP (`'self'` only).
 - `marketing/src/assets/zellige-wordmark.svg`: the moodboard wordmark drawn as
   geometry (circular e/g, stepped l-l-i with star dots, faceted navy glaze).
   Regenerate with `node scripts/build-wordmark.mjs` in `marketing/`.
-- `marketing/src/assets/{ceramic,emblem,companion-hello}.webp`: web-sized copies of
+- `marketing/src/assets/{ceramic,emblem}.webp`: web-sized copies of
   `marketing/images/zellige-rosette-ceramic-v1.png` and the pilot's brand PNGs.
 - `marketing/images/`: source artwork. `zellige-rosette-ceramic-v1.png` is the
   approved mosaic ([prompts](proposals/ceramic-png.md)); `zellige-rosette-v2.svg`,

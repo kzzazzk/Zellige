@@ -52,6 +52,15 @@ export function Story({ reduced }: { reduced: boolean }) {
           <h2 id="piezas-title" className="mt-4 text-[clamp(38px,9vw,52px)] leading-[1.02] sm:text-[clamp(44px,4.6vw,76px)]">
             {t.story.headline.lead}<br /><em className="text-accent">{t.story.headline.turn}</em>
           </h2>
+          {/* A dictionary entry: where the name, and the metaphor, come from. */}
+          <dl className="mt-6 max-w-[52ch] border-l-2 border-brass pl-4">
+            <dt className="flex flex-wrap items-baseline gap-x-2.5 text-sm">
+              <span className="font-semibold">zel·li·ge</span>
+              <span className="text-muted-foreground">/zɛˈliːʒ/</span>
+              <span lang="ar" dir="rtl" className="text-muted-foreground">الزليج</span>
+            </dt>
+            <dd className="mt-1 text-[15px] leading-relaxed text-muted-foreground">{t.story.definition}</dd>
+          </dl>
           <ol className="mt-8 grid gap-1 sm:mt-10">
             {steps.map((step, index) => {
               const current = stage === index;

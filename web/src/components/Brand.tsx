@@ -31,7 +31,7 @@ export function BrandWordmark({ className }: { className?: string }) {
 export function BrandCompanion({ className, alt = "Zel, la mascota de Zellige" }: BrandImageProps) {
   return (
     <img
-      src="/brand/zellige-companion-hello.png"
+      src="/brand/zel/zel-hello.png"
       alt={alt}
       width={1254}
       height={1254}

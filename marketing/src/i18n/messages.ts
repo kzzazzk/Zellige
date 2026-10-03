@@ -17,11 +17,11 @@ const es = {
     themeTitle: "Modo claro / oscuro",
   },
   hero: {
-    definition:
-      "Del árabe az-zellīj, «pequeña piedra pulida». Mosaico de piezas de cerámica cortadas a mano que, por separado, no dicen nada; juntas forman un dibujo.",
-    headline: { lead: "Varias piedras hacen un azulejo.", turn: "Cada una, una forma de usar la IA." },
-    body: "Tus agentes personales, los gestores que orquestan modelos y herramientas, y el chat de siempre. Zellige los une en un solo espacio abierto, con una misma historia.",
-    primary: "Cómo encajan",
+    etymology: { from: "del árabe", source: "az-zellīj", meaning: "«pequeña piedra pulida»" },
+    title: { lead: "Tu IA está repartida en mil apps.", turn: "Zellige la junta." },
+    body: "Tus agentes personales, los gestores que orquestan modelos y el chat de siempre, encajados en un espacio abierto que guarda una sola historia: la tuya.",
+    next: "Ir a la siguiente sección",
+    primary: "Mira cómo encaja",
     secondary: "Cómo va el proyecto",
   },
   zel: {
@@ -37,6 +37,8 @@ const es = {
   },
   story: {
     eyebrow: "El arte de unir",
+    definition:
+      "Del árabe az-zellīj, «pequeña piedra pulida». Mosaico de piezas de cerámica cortadas a mano que, por separado, no dicen nada; juntas forman un dibujo.",
     headline: { lead: "Varias piedras,", turn: "un mismo azulejo." },
     steps: {
       crown: {
@@ -113,11 +115,11 @@ const en = {
     themeTitle: "Light / dark mode",
   },
   hero: {
-    definition:
-      "From Arabic az-zellīj, “small polished stone”. A mosaic of hand-cut ceramic pieces that say nothing on their own; together they make a pattern.",
-    headline: { lead: "Many stones make one tile.", turn: "Each one, a way of using AI." },
-    body: "Your personal agents, the managers that orchestrate models and tools, and the chat you already use. Zellige brings them into one open space, with one shared story.",
-    primary: "See how they fit",
+    etymology: { from: "from Arabic", source: "az-zellīj", meaning: "“small polished stone”" },
+    title: { lead: "Your AI is scattered across a dozen apps.", turn: "Zellige brings it together." },
+    body: "Your personal agents, the managers that orchestrate models and the chat you already use, fitted into one open space that keeps a single story: yours.",
+    next: "Go to the next section",
+    primary: "See how it fits",
     secondary: "How the project is going",
   },
   zel: {
@@ -133,6 +135,8 @@ const en = {
   },
   story: {
     eyebrow: "The art of joining",
+    definition:
+      "From Arabic az-zellīj, “small polished stone”. A mosaic of hand-cut ceramic pieces that say nothing on their own; together they make a pattern.",
     headline: { lead: "Many stones,", turn: "one tile." },
     steps: {
       crown: {
@@ -195,5 +199,5 @@ const en = {
 export const locales = { es, en } as const;
 export type Locale = keyof typeof locales;
 export const defaultLocale: Locale = "es";
-/** Each locale's page path; the default locale lives at the root. */
-export const localePath: Record<Locale, string> = { es: "/", en: "/en/" };
+/** Each locale's page. The root "/" picks one from the browser's languages (public/locale.js). */
+export const localePath: Record<Locale, string> = { es: "/es/", en: "/en/" };

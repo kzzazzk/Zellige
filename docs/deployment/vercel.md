@@ -1,6 +1,22 @@
 # Public landing on Vercel
 
-## Current manual release (2026-10-02)
+## Current manual release (2026-10-03)
+
+The current React landing is `READY` in production at <https://zellige.dev>,
+including the Spanish and English pages. This release was explicitly approved
+and published through the Vercel connector from a fixed copy of the local build.
+The public domain served all 22 public files byte-for-byte matching that copy,
+with the four configured security headers. The pilot API, pilot preview image,
+old companion image path and an unknown route returned 404.
+
+The upload contained only the packaged static files and an equivalent version-2
+Vercel routing configuration. Vercel reported deployment completion without a
+build error. The previous production deployment remains available for rollback.
+No GitHub workflow was run, no commit or push was made, and the local pilot CD
+was not published or activated. This verifies the manual production release,
+not the GitHub Actions deployment path.
+
+## Previous manual release (2026-10-02)
 
 The ivory-background landing with the ceramic PNG is now `READY` in production
 at <https://zellige.dev>. The eleven allowlisted public files were verified
@@ -66,24 +82,22 @@ permissions have not been independently verified by a deployment run.
 
 ## Automatic deployment
 
-The `Deploy marketing to Vercel` workflow publishes the static landing on every
-push to `main`, with no path filter. Manual dispatch runs only when `main` is
-selected. It runs independently of the repository's CI workflow.
-
-Production deployments share the `marketing-production` concurrency group and
-queue without canceling a running deployment. GitHub allows up to 100 pending
-runs with `queue: max`; queue order follows when runs start waiting, not strictly
-commit order. Each serialized run checks out the current tip of `main` when it
-starts, including manual dispatches and re-runs. It does not republish the older
-commit that originally triggered a delayed or repeated run. A push that arrives
-after checkout queues another run to publish the newer state.
+The separate `Deploy marketing to Vercel` workflow runs after a successful `CI marketing`
+workflow for a push to `main`. It checks out the commit that passed CI and checks
+that it is still the current `main` before publishing. It can also be run
+manually from `main`. Pilot releases use their own CD and cannot be blocked by
+a landing deployment failure. Deployments to `marketing-production` are queued
+without interrupting a running publication.
 
 ## Vercel and GitHub configuration
 
 Use a dedicated Vercel project with framework preset `Other`.
 This workflow supplies prebuilt static output; it does not run a remote
-build or deploy the repository root. Keep Vercel's automatic Git deployments
-disconnected from this project to avoid a second deployment path.
+build or deploy the repository root. The Vercel project's Git connection has
+also generated previews from repository pushes. Configure its Ignored Build
+Step as `exit 0` (or disconnect the Git repository) so that Git pushes cannot
+publish the wrong root in parallel with this workflow. The ignored build step
+does not replace the workflow's explicit prebuilt production deployment.
 
 Keep installation-specific values outside the repository. Configure the two
 identifiers as GitHub Actions variables and the token as a secret, either at

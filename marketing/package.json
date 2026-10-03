@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build && vite build --ssr src/entry-server.tsx --outDir .ssr && node scripts/prerender.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "brand": "node scripts/fix-emblem.mjs && node scripts/build-layers.mjs && vite build --ssr scripts/brand-entry.tsx --outDir .brand --emptyOutDir && node scripts/build-brand.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

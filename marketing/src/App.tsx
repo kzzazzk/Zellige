@@ -24,7 +24,7 @@ export function App() {
       </svg>
       <Header />
       <main id="contenido">
-        <Hero />
+        <Hero reduced={reduced} />
         <Band />
         <Story reduced={reduced} />
         <Panorama reduced={reduced} />

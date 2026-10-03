@@ -1,8 +1,24 @@
 # Continuous integration
 
 Work enters `main` through short-lived branches and pull requests. The GitHub
-Actions workflow in `.github/workflows/ci.yml` runs on PRs targeting `main`,
-pushes to `main`, and manual dispatches.
+Actions workflows `CI pilot` (`.github/workflows/ci.yml`) and `CI marketing`
+(`.github/workflows/ci-marketing.yml`) run independently on PRs targeting `main`,
+pushes to `main`, and manual dispatches. There is no `develop` branch.
+Feature branches can use any name (`codex/…`, `feature/…`, or the existing MVP
+branch); the PR target determines whether CI runs. Updating an open PR reruns
+validation. Feature pushes without a PR do not start duplicate CI runs.
+
+## Bootstrap while main has no MVP
+
+Keep the workflow alongside the MVP on its feature branch and introduce both
+through a PR to `main`. Local checks can run before opening that PR. Do not
+publish the deployment workflows alone against the initial `main`, which does
+not contain their application files. Manual workflow dispatch becomes available
+once the workflow exists on the default branch.
+
+SonarQube is temporarily disabled in both workflows. Its existing project
+configuration is retained for later reactivation, but no Sonar credentials or
+quality gate are required for CI or deployment.
 
 ## Checks
 
@@ -17,26 +33,17 @@ pushes to `main`, and manual dispatches.
   as workflow artifacts.
 - **Tests** runs the API suite with line and branch coverage, then retains
   `coverage.xml` for seven days.
-- **SonarQube** waits for Build and Tests, downloads coverage from the same
-  workflow run, analyzes the code, and waits up to five minutes for the quality
-  gate. A rejected gate fails the check, as does missing configuration.
 
-SonarQube analyzes backend sources and the chat web app in `web/src`.
-`marketing/` is checked by its CI job but is outside the Sonar source scope.
-Web tests and `web/src/test/` support are excluded from sources and included
-only as tests; all Python tests remain in test scope. Only Python coverage is
-imported. There is no JS/TS coverage report: uncovered web code can fail the
-Sonar way gate. Address findings and add genuine coverage later; do not bypass
-the gate with blanket frontend coverage exclusions.
-
-Web, Landing, Build, and Tests run in parallel. Dependencies are resolved from
+Landing runs in CI marketing. Web, Build, and Tests run in parallel in CI pilot.
+There is no SonarQube job in either workflow. Dependencies are resolved from
 the two npm lockfiles and `uv.lock`, and third-party actions are pinned to
-verified commit hashes. The CI workflow grants only read access to repository
+verified commit hashes. Each CI workflow grants only read access to repository
 contents; it does not publish packages.
-Newer runs cancel in-progress validation for the same branch or PR.
+Newer runs cancel in-progress validation for the same branch or PR within that
+application only; the workflows have separate concurrency groups.
 Distribution and Python coverage artifacts are retained for seven days.
 
-## Connect SonarQube Cloud
+## Future SonarQube setup (inactive)
 
 Use the free OSS plan for this public, Apache-2.0-licensed project. It includes
 public-project branch and PR analysis. Confirm the selected plan during
@@ -76,27 +83,26 @@ adding these files does not create a Sonar project or activate GitHub rules.
 After the workflow is published and its checks have appeared, configure an
 active GitHub branch ruleset for `main` with:
 
-- Pull requests required, with one approval from another team member.
-- Required status checks: **Web lint, types, tests and build**,
-  **Landing lint, types, build and checks**, **Build**, **Tests**, and
-  **SonarQube**.
+- Pull requests required. Require one approval when another reviewer is available;
+  a solo maintainer must not be blocked by an approval they cannot provide.
+- Independent status checks: **Pilot CI required** evaluates Web, Build, and Tests;
+  **Marketing CI required** evaluates Landing. Each fails if its
+  own validations fail, are cancelled, or are skipped. There is no global gate.
+  Requiring both in branch protection would block PR merging when either fails;
+  this is a separate policy decision, not a dependency between deployments.
 - Dismiss outdated approvals, require resolved review conversations, and require
   the branch to be up to date before merging.
 - Block force pushes and branch deletion, with no routine bypass actors.
 - Squash merging for short-lived feature branches.
 
-These settings are applied in GitHub, not enforced by this document. During the
-initial rollout, bootstrap the main-branch Sonar baseline before requiring its
-check, then verify a PR produces all five checks.
+These settings are applied in GitHub, not enforced by this document. No Sonar
+status should be required while its integration is disabled.
 
 ## External contributions
 
-Fork PRs and Dependabot PRs do not normally receive the repository's Sonar token.
-Web, Landing, Build, and Tests still run; SonarQube fails explicitly instead of
-appearing green without an analysis. For a reviewed external contribution, a
-maintainer can bring the exact reviewed changes to a repository branch and open
-a PR from there so the full workflow can run. Do not run fork code with
-repository secrets through `pull_request_target`.
+Both CI workflows run without repository secrets, including on fork PRs.
+Deployment credentials are used only by the separate CD workflows after a
+successful push to this repository's main branch.
 
 ## Local equivalents
 
@@ -121,7 +127,39 @@ by Git.
 ## Delivery
 
 The separate `Deploy marketing to Vercel` workflow builds and publishes the
-public landing from `main`. It does not wait for this CI workflow, so production
-publication is not gated by these checks. See [landing deployment setup and
-operations](../deployment/vercel.md). Backend deployment, nightly publication,
+public landing from `main`. Automatic publication waits for a successful
+`CI marketing` push run on `main` and
+uses that exact commit; a newer main commit supersedes the release. Manual
+publication is an explicit operator action, not a feature-branch CI side effect. See [landing deployment setup and
+operations](../deployment/vercel.md). The private pilot has a separate CD triggered only by successful `CI pilot` push runs
+on `main`; it reuses the external gateway and selects the exact approved SHA. They do not merge branches or publish the landing. Nightly publication,
 registry publishing, and version-tag releases remain disabled.
+
+
+## Automatic deployment selection
+
+Landing CD listens only for CI marketing; pilot CD listens only for CI pilot.
+Both accept only successful runs caused by a push to main from this repository.
+A failed marketing CI or CD does not block pilot publication, and a failed pilot
+CI or CD does not block landing publication. PR CI and manual CI do not deploy
+the pilot. There is no develop branch or feature-branch publication.
+
+Each CD compares the approved commit with its own last READY production
+version's source metadata. This includes changes left pending by a failed CI,
+failed deployment, or superseded release. It is not just the last commit's diff.
+Deleted and renamed files count. If the baseline is unknown, rebuild once.
+
+| Changed files | Deployment |
+| --- | --- |
+| `marketing/**`, landing packaging/configuration or landing workflow | Landing |
+| `web/**`, `zellige/**`, `migrations/**`, `schemas/**`, `app.py`, Python dependencies or pilot CD | Private pilot |
+| Both groups, or the shared deployment selection helper | Both |
+| Only docs or tests | Neither, after CI passes |
+
+Both CI workflows validate every PR and push to main, without workflow-level
+path filters. Each has its own required-status job. Deployment selection then
+limits publication to applications with pending changes. The deployment workflows may appear as successful runs with publishing
+steps skipped when their application has no pending changes. Explicit manual
+landing deployment remains available and bypasses only the change filter.
+
+See [private pilot CD](../deployment/pilot-cd.md) for its configuration.

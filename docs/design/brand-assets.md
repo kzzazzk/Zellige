@@ -5,21 +5,26 @@ with the built-in image tool using that board as the reference, not copied from
 an unrelated stock library. AI extraction may reinterpret small details; these
 are not vector originals. The source moodboard is not shipped in the website.
 
-- `web/public/brand/zellige-emblem.png`: 1254 × 1254 RGBA PNG. Default mark,
-  sidebar and favicon. Used by `BrandEmblem` in `web/src/components/Brand.tsx`.
-- `web/public/brand/zellige-companion-hello.png`: 1254 × 1254 RGBA PNG. Static
-  welcome illustration, used by `BrandCompanion`. Not an activity indicator.
-- `deploy/marketing.Dockerfile` copies the same source files into the landing
-  image. Do not generate a second, slightly different mascot for that surface.
+- `web/public/brand/zellige-emblem.png`: 1254 × 1254 RGBA PNG. **The single source**
+  for every derived asset. Corrected on 2026-10-03: its top point is teal like the
+  other three (it was cobalt, breaking the four-fold symmetry); the uncorrected
+  original is kept at `docs/design/proposals/zellige-emblem-original.png`.
+- `web/public/brand/zel/zel-<mood>.png`: Zel, the mascot, for each mood (`hello`,
+  `look`, `thinking`, `excited`, `curious`, `focused`, `wink`, `content`). Zel is
+  the emblem with an obsidian face on the centre star. The pilot uses `zel-hello`.
+- `web/public/brand/zellige-wordmark{,-night}.svg`: moodboard wordmark, day (navy)
+  and night (ivory and gold), from `marketing/scripts/build-wordmark.mjs`.
+- Landing: `marketing/src/assets/layer-{centre,crown,cobalt,points}.webp` (the
+  emblem's colour layers), `emblem.webp` and `marketing/public/favicon.png`.
 
-Both assets have transparent backgrounds and explicit intrinsic dimensions.
-Keep the mark decorative beside the wordmark; give the standalone mascot an
-accessible description. No animation or extra character poses are implied.
-The palette and both themes live in `web/src/styles.css`.
+Regenerate everything derived with `npm run brand` in `marketing/` after changing
+the emblem or Zel's face (`marketing/src/components/ZelFace.tsx`, the same
+component the landing renders). Never edit the outputs by hand, and do not
+generate a second, slightly different mascot for any surface.
 
 ## Generation prompts
 
-### Companion
+### Companion (superseded: the generated companion PNG was replaced by Zel on 2026-10-03)
 
 Use case: background-extraction. Asset type: transparent PNG for the existing Zellige app welcome screen. Input image is the user's approved Zellige brand board. Isolate ONLY the friendly smiling ceramic star mascot shown prominently in the tablet mockup on the right (blue top point, teal side/bottom points, ivory petals, thin brass-gold seams, glossy black face with two happy ivory curved eyes). Preserve exactly that character identity, ceramic material, geometry, proportions and frontal orientation; this is asset extraction, not a new mascot design. Output ONE centered complete mascot on a genuinely transparent background, generous 10% clear margin. Include its tiny ceramic/gold sparkle at upper right and lower left if visible, no glow halo. No tablet, floor, backdrop, text, labels, other expressions, scenery, badges or UI. Clean alpha edges, sharp enough to display at 200px. Square canvas.
 

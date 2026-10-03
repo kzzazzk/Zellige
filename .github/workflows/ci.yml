@@ -1,4 +1,4 @@
-name: CI
+name: CI pilot
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-pilot-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,30 +36,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-
-  marketing:
-    name: Landing lint, types, build and checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: marketing/package-lock.json
-      - run: npm ci
-        working-directory: marketing
-      - run: npm run lint
-        working-directory: marketing
-      - run: npm run build
-        working-directory: marketing
-      - name: Check the prerendered page and the packaged artifact
-        run: |
-          node --test tests/marketing.test.mjs tests/marketing-build.test.mjs tests/pattern-geometry.test.mjs
-          node deploy/build-marketing.mjs
+      - name: Check pilot publication and deployment selection
+        working-directory: .
+        run: node --test tests/publish-pilot.test.mjs tests/deployment-scope.test.mjs
 
   build:
     name: Build
@@ -116,7 +95,7 @@ jobs:
         run: uv sync --locked --dev
       - name: Run tests with branch coverage
         run: uv run --locked coverage run -m unittest discover -s tests -v
-      - name: Export coverage for SonarQube
+      - name: Export coverage report
         run: |
           uv run --locked coverage xml
           uv run --locked coverage report
@@ -128,43 +107,23 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  sonarqube:
-    name: SonarQube
-    needs: [build, tests]
+  required:
+    name: Pilot CI required
+    if: ${{ always() }}
+    needs: [web, build, tests]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 2
     steps:
-      - name: Require configured SonarQube Cloud analysis
+      - name: Require every validation to succeed
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          RESULTS: ${{ toJSON(needs) }}
         run: |
-          if [ "$IS_FORK" = "true" ]; then
-            echo "::error::Sonar credentials are unavailable to forks. Review the contribution and run it from a repository branch before merging."
-            exit 1
-          fi
-          for setting in SONAR_TOKEN SONAR_PROJECT_KEY SONAR_ORGANIZATION; do
-            if [ -z "${!setting}" ]; then
-              echo "::error::Missing $setting. See docs/development/ci.md."
-              exit 1
-            fi
-          done
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Download coverage from this workflow run
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: coverage
-      - name: SonarQube Cloud scan and quality gate
-        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-        with:
-          args: >-
-            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+          python3 - <<'PYTHON'
+          import json
+          import os
+          results = json.loads(os.environ["RESULTS"])
+          failed = [name for name, job in results.items() if job["result"] != "success"]
+          if failed:
+              raise SystemExit("Required validations did not pass: " + ", ".join(failed))
+          print("All required validations passed.")
+          PYTHON

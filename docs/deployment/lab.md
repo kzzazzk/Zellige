@@ -67,6 +67,12 @@ To recreate just the pilot
 without losing data: `docker compose -f compose.lab.yaml up -d --force-recreate pilot`.
 Do not use `down -v` unless deliberately deleting the pilot's data.
 
+## Pilot deployment transition
+
+The private Vercel demo has its own [deployment workflow](pilot-cd.md).
+The previous host-only release script is not published or activated. Keep the
+local pilot running until Google access and the replacement backend are verified.
+
 Open `https://zellige-dev.lab.kzzazzk.tech`, then enter the value of
 `ZELLIGE_API_TOKEN` from `.runtime/pilot.env` in **Ajustes → Clave de acceso**.
 The key grants access to the whole pilot; this MVP has no per-user authorization.

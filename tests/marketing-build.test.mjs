@@ -127,18 +127,25 @@ test('all paths inherit the existing landing security headers', async () => {
   assert.deepEqual(config.routes[0], { src: '/.*', headers, continue: true });
   assert.deepEqual(config.routes.slice(1), [
     { src: '^/$', dest: '/index.html' },
+    { src: '^/es/?$', dest: '/es/index.html' },
     { src: '^/en/?$', dest: '/en/index.html' },
     { handle: 'filesystem' },
   ]);
 });
 
-test('CD keeps deployment identifiers and the token in GitHub Secrets', async () => {
+test('landing CD is separate, waits for successful main CI and checks the same commit', async () => {
   const workflow = await readFile(join(repositoryRoot, '.github/workflows/deploy-marketing.yml'), 'utf8');
-  assert.match(workflow, /^\s+VERCEL_ORG_ID: \$\{\{ secrets\.VERCEL_ORG_ID \}\}$/m);
-  assert.match(workflow, /^\s+VERCEL_PROJECT_ID: \$\{\{ secrets\.VERCEL_PROJECT_ID \}\}$/m);
+  const ci = await readFile(join(repositoryRoot, '.github/workflows/ci-marketing.yml'), 'utf8');
+  assert.doesNotMatch(ci, /deploy-marketing:/);
+  assert.match(workflow, /workflow_run:\n\s+workflows: \[CI marketing\]\n\s+types: \[completed\]/);
+  assert.match(workflow, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(workflow, /github\.event\.workflow_run\.event == 'push'/);
+  assert.match(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /if \[ "\$latest_sha" != "\$APPROVED_SHA" \]/);
+  assert.match(workflow, /^\s+VERCEL_ORG_ID: \$\{\{ vars\.VERCEL_ORG_ID \}\}$/m);
+  assert.match(workflow, /^\s+VERCEL_PROJECT_ID: \$\{\{ vars\.VERCEL_PROJECT_ID \}\}$/m);
   assert.match(workflow, /^\s+VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}$/m);
-  assert.doesNotMatch(workflow, /\$\{\{\s*vars\./);
-  assert.match(workflow, /vercel deploy --prebuilt --prod --yes >"\$deployment_log" 2>&1/);
+  assert.match(workflow, /vercel deploy --prebuilt --prod --yes --meta sourceSha="\$APPROVED_SHA" >"\$deployment_log" 2>&1/);
   assert.match(workflow, /trap 'rm -f "\$deployment_log"' EXIT/);
 });
 

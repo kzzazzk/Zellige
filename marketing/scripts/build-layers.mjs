@@ -2,8 +2,8 @@
 // layers, so the landing can assemble the logo around Zel layer by layer:
 //   centre  — the teal eight-point star in the middle (Zel's face sits on it)
 //   crown   — the eight ivory kites around it
-//   cobalt  — the blue corner squares and top point
-//   points  — the outer teal points
+//   cobalt  — the four blue corner squares
+//   points  — the four outer teal points (see scripts/fix-emblem.mjs)
 // Every layer keeps the emblem's own pixels and full canvas, so stacked they
 // rebuild the logo exactly. Each gold rim goes to the nearest coloured piece, and
 // the thin gold crackle lines inside pieces are smoothed into the glaze.

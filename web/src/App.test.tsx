@@ -34,7 +34,7 @@ describe("Conversation app", () => {
     apiFixture();
     const view = render(<App />);
     expect(screen.getByRole("img", { name: "Zel, la mascota de Zellige" }))
-      .toHaveAttribute("src", "/brand/zellige-companion-hello.png");
+      .toHaveAttribute("src", "/brand/zel/zel-hello.png");
     expect(document.documentElement).toHaveClass("dark");
     fireEvent.click(screen.getByRole("button", { name: "Conectar servidor" }));
     fireEvent.click(screen.getByRole("button", { name: "Usar tema claro" }));

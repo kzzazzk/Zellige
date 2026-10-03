@@ -1,7 +1,9 @@
 name: Deploy marketing to Vercel
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI marketing]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -16,37 +18,64 @@ concurrency:
 jobs:
   deploy:
     name: Publish the public landing
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: marketing-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: marketing/package-lock.json
+      - name: Check changes since this application was deployed
+        id: scope
+        env:
+          DEPLOY_TARGET: marketing
+          APPROVED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOY_FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: node deploy/deployment-scope.mjs
       - name: Build the React landing
+        if: steps.scope.outputs.changed == 'true'
         working-directory: marketing
         run: |
           npm ci
           npm run build
       - name: Verify the built page and the public deployment boundary
+        if: steps.scope.outputs.changed == 'true'
         run: node --test tests/marketing.test.mjs tests/marketing-build.test.mjs
       - name: Package the static landing
+        if: steps.scope.outputs.changed == 'true'
         run: node deploy/build-marketing.mjs
       - name: Deploy the packaged landing to production
+        if: steps.scope.outputs.changed == 'true'
         working-directory: .output/marketing
         env:
+          APPROVED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TELEMETRY_DISABLED: "1"
         run: |
+          latest_sha="$(git -C "$GITHUB_WORKSPACE" ls-remote origin refs/heads/main | cut -f1)"
+          if [ "$latest_sha" != "$APPROVED_SHA" ]; then
+            echo "A newer main commit superseded this landing release."
+            exit 0
+          fi
           for setting in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
             if [ -z "${!setting}" ]; then
               echo "::error::Missing $setting. See docs/deployment/vercel.md."
@@ -55,7 +84,7 @@ jobs:
           done
           deployment_log="$(mktemp "${RUNNER_TEMP}/zellige-deploy.XXXXXX")"
           trap 'rm -f "$deployment_log"' EXIT
-          if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes >"$deployment_log" 2>&1; then
+          if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes --meta sourceSha="$APPROVED_SHA" >"$deployment_log" 2>&1; then
             echo "::error::Deployment failed. Check the private Vercel dashboard and Actions settings; raw CLI output is not published."
             exit 1
           fi

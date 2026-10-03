@@ -16,6 +16,10 @@
       "dest": "/index.html"
     },
     {
+      "src": "^/es/?$",
+      "dest": "/es/index.html"
+    },
+    {
       "src": "^/en/?$",
       "dest": "/en/index.html"
     },
