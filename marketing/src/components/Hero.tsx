@@ -1,10 +1,10 @@
-import { useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { useMotionValueEvent, useScroll } from "motion/react";
 import { ArrowDown, ChevronDown, Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n";
-import { Companion } from "./Companion";
+import { Companion, type Mood } from "./Companion";
 import { LayerGlyph, pieces, type Piece } from "./Trio";
 import { Wordmark } from "./Wordmark";
 
@@ -25,7 +25,35 @@ function layerAt(x: number, y: number): Piece | undefined {
   return r < 0.46 ? "crown" : "points";
 }
 
+/*
+ * Zel wakes up once the centre lands: eyes closed, open, a look left and right
+ * at the new page, a blink, then the usual smile. [delay ms, mood, gaze x in face units]
+ */
+const wake: [number, Mood, number][] = [
+  [1700, "look", 0],
+  [2150, "look", -70],
+  [2650, "look", 70],
+  [3100, "look", 0],
+  [3350, "content", 0],
+  [3500, "look", 0],
+  [3900, "hello", 0],
+];
+
 function Emblem({ reduced }: { reduced: boolean }) {
+  const root = useRef<HTMLDivElement>(null);
+  const [intro, setIntro] = useState<Mood>();
+  useEffect(() => {
+    if (reduced) return;
+    const node = root.current;
+    const timers = [window.setTimeout(() => setIntro("content"), 0)];
+    for (const [delay, mood, gaze] of wake) {
+      timers.push(window.setTimeout(() => {
+        setIntro(mood === "hello" ? undefined : mood);
+        node?.style.setProperty("--look-x", `${gaze}px`);
+      }, delay));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [reduced]);
   const t = useT();
   const [hover, setHover] = useState<Piece>();
   const shown = hover;
@@ -35,12 +63,13 @@ function Emblem({ reduced }: { reduced: boolean }) {
   }
   return (
     <div
+      ref={root}
       className={cn("hero-zel tile relative mx-auto aspect-square w-[min(78vw,clamp(200px,30vh,380px))]", !reduced && "hero-intro", shown && `lift-${shown}`)}
       onPointerMove={track}
       onPointerDown={track}
       onPointerLeave={() => setHover(undefined)}
     >
-      <Companion mood={shown ? "look" : "hello"} follow alt={t.zel.alt} className="size-full drop-shadow-[0_26px_34px_rgb(11_29_41/0.3)]" />
+      <Companion mood={shown ? "look" : intro ?? "hello"} follow alt={t.zel.alt} className="size-full drop-shadow-[0_26px_34px_rgb(11_29_41/0.3)]" />
       {/* The layer under the pointer names itself; screen readers get all three below. */}
       {pieces.map((piece) => (
         <span

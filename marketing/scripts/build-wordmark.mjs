@@ -87,12 +87,15 @@ writeFileSync(out, svg);
 console.log(`Wrote ${out} (${svg.length} bytes)`);
 }
 
-// Day: deep navy facets on ivory. Night: ivory-and-gold facets with gold stars, for dark surfaces.
+// Day: deep navy facets on ivory. Night: porcelain facets (cool ivory, pearl glints). The two
+// stars are gold in both, so the mark keeps one constant anchor across themes.
+// (Glazed cobalt was tried at night and rejected: too little contrast on the ink background.)
 wordmark('zellige-wordmark.svg',
   ['#081936', '#0a1f42', '#0b2147', '#071630', '#0c2550', '#06132b', '#0f2d5e', '#09193a', '#123468', '#0a1c3f'],
   ['#1d4d8f', '#1a4a8e', '#2257a8'],
-  ['#1c4f9c', '#0c2b5c', '#0f3266', '#081d42', '#0a2550', '#061837', '#0d2d60', '#17468d']);
+  // Gold stars in both modes: the fixed anchor of the mark. A deeper gold by day, to hold on ivory.
+  ['#e2c06a', '#8f6a26', '#c9a24f', '#6e5118', '#b08a3a', '#5f4514', '#9a7529', '#d4b05a']);
 wordmark('zellige-wordmark-night.svg',
-  ['#f3ead4', '#ebdfc2', '#f8f1e0', '#e4d4b0', '#efe3c8', '#dcc89c', '#f6eedb', '#e8d9b6', '#fbf6ea', '#eadcbc'],
-  ['#d4b678', '#c9a962', '#e2c690'],
+  ['#f7f5ef', '#e9e5da', '#fdfcf8', '#d6d0c2', '#f1eee5', '#c9c2b2', '#faf8f2', '#e0dbcf', '#ffffff', '#ece8de'],
+  ['#ffffff', '#e8eef8', '#d8e2f1'],
   ['#f4d993', '#b8913f', '#d9b765', '#8f6a26', '#c9a24f', '#7d5c1f', '#a9843a', '#e6c77c']);

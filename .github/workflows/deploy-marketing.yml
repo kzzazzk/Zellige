@@ -1,6 +1,7 @@
 name: Deploy marketing to Vercel
 
 on:
+  workflow_call:
   workflow_run:
     workflows: [CI marketing]
     types: [completed]
@@ -24,7 +25,8 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.head_repository.full_name == github.repository) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/minimal-mvp-chat-web' && github.repository == 'kzzazzk/Zellige')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: marketing-production
@@ -43,6 +45,7 @@ jobs:
         id: scope
         env:
           DEPLOY_TARGET: marketing
+          APPROVED_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           APPROVED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
@@ -65,15 +68,16 @@ jobs:
         if: steps.scope.outputs.changed == 'true'
         working-directory: .output/marketing
         env:
+          APPROVED_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           APPROVED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TELEMETRY_DISABLED: "1"
         run: |
-          latest_sha="$(git -C "$GITHUB_WORKSPACE" ls-remote origin refs/heads/main | cut -f1)"
+          latest_sha="$(git -C "$GITHUB_WORKSPACE" ls-remote origin "refs/heads/$APPROVED_BRANCH" | cut -f1)"
           if [ "$latest_sha" != "$APPROVED_SHA" ]; then
-            echo "A newer main commit superseded this landing release."
+            echo "A newer branch commit superseded this landing release."
             exit 0
           fi
           for setting in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do

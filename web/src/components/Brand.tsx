@@ -17,7 +17,7 @@ export function BrandEmblem({ className, alt = "" }: BrandImageProps) {
   );
 }
 
-/** The moodboard wordmark; on dark surfaces it switches to ivory and gold. */
+/** The moodboard wordmark; on dark surfaces it switches to porcelain with gold stars. */
 export function BrandWordmark({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0", className)} role="img" aria-label="zellige">

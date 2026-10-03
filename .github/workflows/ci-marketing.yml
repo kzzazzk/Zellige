@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, minimal-mvp-chat-web]
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: ci-marketing-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   marketing:
@@ -59,3 +59,10 @@ jobs:
               raise SystemExit("Required validations did not pass: " + ", ".join(failed))
           print("All required validations passed.")
           PYTHON
+
+  publish:
+    name: Deploy validated marketing
+    needs: [required]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/minimal-mvp-chat-web'
+    uses: ./.github/workflows/deploy-marketing.yml
+    secrets: inherit

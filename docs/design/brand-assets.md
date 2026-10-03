@@ -13,7 +13,7 @@ are not vector originals. The source moodboard is not shipped in the website.
   `look`, `thinking`, `excited`, `curious`, `focused`, `wink`, `content`). Zel is
   the emblem with an obsidian face on the centre star. The pilot uses `zel-hello`.
 - `web/public/brand/zellige-wordmark{,-night}.svg`: moodboard wordmark, day (navy)
-  and night (ivory and gold), from `marketing/scripts/build-wordmark.mjs`.
+  and night (porcelain); gold stars in both, from `marketing/scripts/build-wordmark.mjs`.
 - Landing: `marketing/src/assets/layer-{centre,crown,cobalt,points}.webp` (the
   emblem's colour layers), `emblem.webp` and `marketing/public/favicon.png`.
 

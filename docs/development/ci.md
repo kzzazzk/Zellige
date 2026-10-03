@@ -1,5 +1,17 @@
 # Continuous integration
 
+## Branch delivery (2026-10-03)
+
+Pushes to `minimal-mvp-chat-web` run both CI workflows. Each successful required
+check calls its own reusable deployment workflow from that same commit. This
+explicitly publishes the branch to the existing landing production and private
+pilot environments without merging into `main`. The deployment checks that the
+approved SHA is still the head of the source branch. Other feature branches and
+PRs cannot publish. The existing `main` workflow-run path remains available.
+CI cancellation is disabled so a newer push cannot interrupt publication.
+This branch delivery supersedes the main-only activation instructions below.
+
+
 Work enters `main` through short-lived branches and pull requests. The GitHub
 Actions workflows `CI pilot` (`.github/workflows/ci.yml`) and `CI marketing`
 (`.github/workflows/ci-marketing.yml`) run independently on PRs targeting `main`,

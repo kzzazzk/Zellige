@@ -33,3 +33,17 @@ test('stale commits, wrong projects, wrong templates and missing OAuth cause no 
 test('reports a deployment build failure instead of claiming success',async()=>{
   const s=scenario({result:'ERROR'});await assert.rejects(publishPilot({env,fetchImpl:s.fetchImpl}),/deployment failed/);
 });
+test('branch release checks the approved branch and rejects unapproved branches before writes', async () => {
+  const s = scenario();
+  const refs = [];
+  const fetchImpl = async (url, options) => {
+    if (new URL(url).hostname === 'api.github.com') refs.push(new URL(url).pathname);
+    return s.fetchImpl(url, options);
+  };
+  await publishPilot({ env: { ...env, APPROVED_BRANCH: 'minimal-mvp-chat-web' }, fetchImpl });
+  assert.equal(refs.length, 3);
+  assert.ok(refs.every(path => path.endsWith('/heads/minimal-mvp-chat-web')));
+  const denied = scenario();
+  await assert.rejects(publishPilot({ env: { ...env, APPROVED_BRANCH: 'untrusted' }, fetchImpl: denied.fetchImpl }), /Invalid approved branch/);
+  assert.equal(denied.writes.length, 0);
+});

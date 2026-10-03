@@ -46,8 +46,8 @@ export function Companion({
       const dy = event.clientY - (rect.top + rect.height * 0.5);
       const length = Math.hypot(dx, dy) || 1;
       const reach = Math.min(1, length / 400);
-      node!.style.setProperty("--look-x", `${((dx / length) * reach * 22).toFixed(1)}px`);
-      node!.style.setProperty("--look-y", `${((dy / length) * reach * 16).toFixed(1)}px`);
+      node!.style.setProperty("--look-x", `${((dx / length) * reach * 70).toFixed(1)}px`);
+      node!.style.setProperty("--look-y", `${((dy / length) * reach * 50).toFixed(1)}px`);
     }
     addEventListener("pointermove", look, { passive: true });
     return () => removeEventListener("pointermove", look);

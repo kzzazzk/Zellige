@@ -7,13 +7,16 @@ export async function publishPilot({ env = process.env, fetchImpl = fetch, wait 
   if (!/^[a-f0-9]{40}$/.test(env.APPROVED_SHA)) throw new Error('Invalid approved commit');
   if (env.GITHUB_REPOSITORY !== 'kzzazzk/Zellige') throw new Error('Unexpected source repository');
 
-  async function currentMain() {
-    const response = await fetchImpl('https://api.github.com/repos/kzzazzk/Zellige/git/ref/heads/main', {
+  const branch = env.APPROVED_BRANCH || 'main';
+  if (!['main', 'minimal-mvp-chat-web'].includes(branch)) throw new Error('Invalid approved branch');
+
+  async function currentBranch() {
+    const response = await fetchImpl(`https://api.github.com/repos/kzzazzk/Zellige/git/ref/heads/${encodeURIComponent(branch)}`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'zellige-pilot-cd' },
       signal: AbortSignal.timeout(20000),
     });
-    if (!response.ok) throw new Error('Could not verify current main');
-    if ((await response.json()).object?.sha !== env.APPROVED_SHA) throw new Error('A newer main commit superseded this release');
+    if (!response.ok) throw new Error('Could not verify current branch');
+    if ((await response.json()).object?.sha !== env.APPROVED_SHA) throw new Error('A newer branch commit superseded this release');
   }
   async function vercel(path, { method = 'GET', body, query = {} } = {}) {
     const url = new URL(path, 'https://api.vercel.com');
@@ -27,7 +30,7 @@ export async function publishPilot({ env = process.env, fetchImpl = fetch, wait 
     if (!response.ok) throw new Error(`Vercel request failed (${response.status})`);
     return response.json();
   }
-  await currentMain();
+  await currentBranch();
   const projectId = encodeURIComponent(env.VERCEL_PILOT_PROJECT_ID);
   const project = await vercel(`/v9/projects/${projectId}`);
   if (project.name !== 'zellige-demo' || project.id !== env.VERCEL_PILOT_PROJECT_ID) throw new Error('Target is not the isolated demo project');
@@ -38,12 +41,12 @@ export async function publishPilot({ env = process.env, fetchImpl = fetch, wait 
   for (const key of ['AUTH_URL', 'AUTH_SECRET', 'AUTH_GOOGLE_ID', 'AUTH_GOOGLE_SECRET', 'DEV_ALLOWED_EMAILS']) {
     if (!keys.has(key)) throw new Error(`Configure ${key} in the demo project before enabling CD`);
   }
-  await currentMain();
+  await currentBranch();
   await vercel(`/v10/projects/${projectId}/env`, {
     method: 'POST', query: { upsert: 'true' },
     body: { key: 'DEV_SOURCE_SHA', value: env.APPROVED_SHA, type: 'plain', target: ['production'] },
   });
-  await currentMain();
+  await currentBranch();
   const deployment = await vercel('/v13/deployments', {
     method: 'POST',
     body: {
@@ -65,7 +68,7 @@ export async function publishPilot({ env = process.env, fetchImpl = fetch, wait 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   publishPilot().then(sha => console.log(`Pilot gateway published for ${sha.slice(0, 12)}.`)).catch(error => {
     // Only deliberate messages from this module are safe to surface.
-    const safe = /^(Missing |Invalid approved|Unexpected source|Could not verify|A newer main|Vercel request failed|Target is not|Gateway template|Configure |Vercel did not|Pilot gateway deployment failed|Timed out waiting)/;
+    const safe = /^(Missing |Invalid approved|Unexpected source|Could not verify|A newer branch|Vercel request failed|Target is not|Gateway template|Configure |Vercel did not|Pilot gateway deployment failed|Timed out waiting)/;
     console.error(safe.test(error.message) ? error.message : 'Pilot CD failed; inspect the private deployment dashboard.');
     process.exitCode = 1;
   });

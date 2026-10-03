@@ -46,26 +46,27 @@
   --popover: #ffffff;
   --radius: 0.25rem;
 }
-/* Night: the same ivory, teal and brass, set on the deep blue of the project band. */
+/* Night: warm ink, like Fez after dark. Ivory text, sand for secondary text, gold for
+   emphasis (matching the wordmark's stars); three surface levels, each a little lighter. */
 .dark {
   color-scheme: dark;
-  --background: #09151d;
-  --surface: #10232e;
-  --foreground: #f8f6ef;
-  --muted-foreground: #a9bcc4;
-  --primary: #5cc1b8;
-  --primary-foreground: #09151d;
-  --accent: #6cc9c0;
-  --gold: #d4b678;
-  --brass: #a8894f;
-  --border: #28404c;
-  --input: #6b8692;
-  --ring: #d4b678;
-  --night: #050e14;
-  --night-foreground: #f8f6ef;
-  --night-muted: #b4c4c6;
-  --night-gold: #d4b678;
-  --popover: #10232e;
+  --background: #0c1720;
+  --surface: #13222c;
+  --popover: #192a35;
+  --foreground: #f3ecdd;
+  --muted-foreground: #c8bfae;
+  --primary: #f3ecdd;
+  --primary-foreground: #0c1720;
+  --accent: #d9bd7f;
+  --gold: #d9bd7f;
+  --brass: #b8975a;
+  --border: #2b3a42;
+  --input: #7d8a8f;
+  --ring: #d9bd7f;
+  --night: #08111a;
+  --night-foreground: #f3ecdd;
+  --night-muted: #c8bfae;
+  --night-gold: #d9bd7f;
 }
 
 @theme inline {
@@ -146,6 +147,10 @@
   }
   body {
     @apply m-0 bg-background font-sans text-foreground antialiased;
+  }
+  /* Light text on dark looks thinner: give body copy a touch more weight at night. */
+  .dark body {
+    font-weight: 430;
   }
   img {
     @apply block h-auto max-w-full;
