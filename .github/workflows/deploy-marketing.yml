@@ -88,7 +88,21 @@ jobs:
           done
           deployment_log="$(mktemp "${RUNNER_TEMP}/zellige-deploy.XXXXXX")"
           trap 'rm -f "$deployment_log"' EXIT
-          if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes --meta sourceSha="$APPROVED_SHA" >"$deployment_log" 2>&1; then
+          if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes --meta sourceSha="$APPROVED_SHA" --token="$VERCEL_TOKEN" >"$deployment_log" 2>&1; then
+            DEPLOYMENT_LOG="$deployment_log" node --input-type=module -e '
+              import { readFileSync } from "node:fs";
+              const log = readFileSync(process.env.DEPLOYMENT_LOG, "utf8");
+              for (const [label, pattern] of Object.entries({
+                authentication: /token|credentials|unauthorized|forbidden/i,
+                gitAuthor: /git author|commit author/i,
+                projectAccess: /project.*(not found|access|exist)/i,
+                prebuiltConfig: /prebuilt|output directory|config.json/i,
+                rateLimit: /rate.?limit|too many|429/i,
+                cliInstall: /ETARGET|ENOTFOUND|EAI_AGAIN/i,
+                invalidOption: /unknown.*option|invalid.*argument/i,
+                runtimeConfig: /runtime|function|version/i,
+              })) if (pattern.test(log)) console.log(`CLI diagnostic category: ${label}`);
+            '
             echo "::error::Deployment failed. Check the private Vercel dashboard and Actions settings; raw CLI output is not published."
             exit 1
           fi

@@ -145,7 +145,7 @@ test('landing CD is separate, waits for successful main CI and checks the same c
   assert.match(workflow, /^\s+VERCEL_ORG_ID: \$\{\{ vars\.VERCEL_ORG_ID \}\}$/m);
   assert.match(workflow, /^\s+VERCEL_PROJECT_ID: \$\{\{ vars\.VERCEL_PROJECT_ID \}\}$/m);
   assert.match(workflow, /^\s+VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}$/m);
-  assert.match(workflow, /vercel deploy --prebuilt --prod --yes --meta sourceSha="\$APPROVED_SHA" >"\$deployment_log" 2>&1/);
+  assert.match(workflow, /vercel deploy --prebuilt --prod --yes --meta sourceSha="\$APPROVED_SHA" --token="\$VERCEL_TOKEN" >"\$deployment_log" 2>&1/);
   assert.match(workflow, /trap 'rm -f "\$deployment_log"' EXIT/);
 });
 
