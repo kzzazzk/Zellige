@@ -1,4 +1,5 @@
 import type { Change, Profile, Run } from "../api/types";
+import { RunReview } from "./RunReview";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -83,6 +84,7 @@ export function Inspector(w: InspectorProps) {
                   {runMessage(run) && (
                     <p className="whitespace-pre-wrap break-words text-sm">{runMessage(run)}</p>
                   )}
+                  <RunReview run={run} />
                   <code className="block break-all text-[10px] text-muted-foreground">
                     {run.id}
                   </code>
