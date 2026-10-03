@@ -42,9 +42,8 @@ jobs:
       - name: Deploy the packaged landing to production
         working-directory: .output/marketing
         env:
-          # Secrets keep deployment identifiers out of source and masked in logs.
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TELEMETRY_DISABLED: "1"
         run: |
@@ -57,7 +56,7 @@ jobs:
           deployment_log="$(mktemp "${RUNNER_TEMP}/zellige-deploy.XXXXXX")"
           trap 'rm -f "$deployment_log"' EXIT
           if ! npm exec --yes --package=vercel@62.2.0 -- vercel deploy --prebuilt --prod --yes >"$deployment_log" 2>&1; then
-            echo "::error::Deployment failed. Check the private Vercel dashboard and Actions secrets; raw CLI output is not published."
+            echo "::error::Deployment failed. Check the private Vercel dashboard and Actions settings; raw CLI output is not published."
             exit 1
           fi
           echo "Production landing deployed."

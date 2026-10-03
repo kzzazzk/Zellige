@@ -85,16 +85,15 @@ This workflow supplies prebuilt static output; it does not run a remote
 build or deploy the repository root. Keep Vercel's automatic Git deployments
 disconnected from this project to avoid a second deployment path.
 
-Keep installation-specific values outside the repository. Configure these
-GitHub Actions secrets at repository level or in the `marketing-production`
-environment. The identifiers are not credentials, but do not need to be public.
-Use secrets for all three values: ordinary Actions variables are not masked
-and can appear in public step logs, even when absent from the source files.
+Keep installation-specific values outside the repository. Configure the two
+identifiers as GitHub Actions variables and the token as a secret, either at
+repository level or in the `marketing-production` environment. Variables are
+not masked in Actions logs, so do not print their values in workflow steps.
 
 | Setting | Type | Value |
 | --- | --- | --- |
-| `VERCEL_ORG_ID` | Secret | Team ID from the Vercel dashboard |
-| `VERCEL_PROJECT_ID` | Secret | Project ID from the Vercel dashboard |
+| `VERCEL_ORG_ID` | Variable | Team ID from the Vercel dashboard |
+| `VERCEL_PROJECT_ID` | Variable | Project ID from the Vercel dashboard |
 | `VERCEL_TOKEN` | Secret | Vercel deployment token authorized for that team |
 
 The workflow reads the token only during deployment, passes it through the
