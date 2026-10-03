@@ -51,7 +51,7 @@ describe("workspace workflows", () => {
     expect(result.current.thread!.conversation.title).toBe(original.title);
   });
 
-  it("queues on the selected branch/version, scopes the notice, and preserves diagnostic reset inconsistencies", async () => {
+  it("queues on the selected branch/version, scopes the notice, and resets sync diagnostics on disconnect", async () => {
     const { api, result } = await setup();
     await act(async () => { await result.current.sendMessage("one"); });
     await act(async () => { await result.current.fork("alternate", null); });
@@ -67,13 +67,14 @@ describe("workspace workflows", () => {
     act(() => result.current.newChat());
     expect(result.current.queuedNotice).toBe(false);
     api.fetchMock.mockResolvedValueOnce(response({ changes: [], next_cursor: 19, has_more: true }));
+    api.fetchMock.mockResolvedValueOnce(response({ changes: [], next_cursor: 19, has_more: false }));
     await act(async () => { expect(await result.current.readChanges()).toBe(true); });
     expect(loadSession().cursor).toBe(19);
     await act(async () => { await result.current.search("", true); });
     act(() => result.current.disconnect());
     expect(result.current.cursor).toBe(0);
     expect(result.current.changes).toEqual([]);
-    expect(result.current.hasMoreChanges).toBe(true);
+    expect(result.current.hasMoreChanges).toBe(false);
     expect(result.current.archived).toBe(true);
   });
 });
