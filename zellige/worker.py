@@ -5,7 +5,7 @@ import argparse
 import json
 import math
 import os
-import re
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -146,19 +146,51 @@ def thread_id_from_jsonl(stdout: str) -> str | None:
 
 
 def _test_command(command: str) -> bool:
-    value = " ".join(command.lower().split())
-    shell = re.fullmatch(r"(?:/bin/)?(?:ba|z|fi)?sh -lc ['\"](.+)['\"]", value)
-    if shell:
-        value = shell.group(1)
-    runner = (
-        r"(?:python3?|python) -m (?:pytest|unittest)\b"
-        r"|pytest\b|vitest\b|jest\b"
-        r"|npm (?:run )?test\b|pnpm test\b|yarn test\b|bun test\b"
-        r"|cargo test\b|go test\b|dotnet test\b"
-        r"|(?:mvn|mvnw)(?:\s+[^;&|]+)?\s+test\b"
-        r"|(?:\./)?gradlew? test\b"
-    )
-    return re.search(rf"(?:^|&&\s*|\|\|\s*|;\s*)(?:cd\s+[^;&|]+&&\s*)?(?:{runner})", value) is not None
+    # Reject even quoted shell syntax: false negatives are safer than masked exits.
+    if any(character in command for character in ";&|<>\n\r`$(){}\\#"):
+        return False
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        return False
+    if not argv:
+        return False
+    executable = Path(argv[0]).name
+    if executable in {"bash", "sh", "zsh", "fish"}:
+        if len(argv) != 3 or argv[1] != "-lc":
+            return False
+        # Only one wrapper is supported, with a simple runner as its body.
+        try:
+            argv = shlex.split(argv[2])
+        except ValueError:
+            return False
+        if not argv:
+            return False
+        executable = Path(argv[0]).name
+    args = argv[1:]
+    if executable in {"pytest", "vitest", "jest"}:
+        return True
+    if executable in {"python", "python3"}:
+        return len(args) >= 2 and args[0] == "-m" and args[1] in {"pytest", "unittest"}
+    if executable == "npm":
+        return bool(args) and (args[0] == "test" or (
+            len(args) >= 2 and args[0] == "run" and (
+                args[1] == "test" or (args[1].startswith("test:") and len(args[1]) > 5)
+            )
+        ))
+    if executable in {"pnpm", "yarn", "bun", "cargo", "go", "dotnet", "gradle", "gradlew"}:
+        return bool(args) and args[0] == "test"
+    if executable in {"mvn", "mvnw"}:
+        # Allow common attached options/switches, never mistake an option value for a goal.
+        switches = {"-q", "--quiet", "-B", "--batch-mode", "-e", "--errors", "-X", "--debug", "-o", "--offline"}
+        for arg in args:
+            if arg == "test":
+                return True
+            if arg in switches or (arg.startswith(("-D", "-P")) and len(arg) > 2):
+                continue
+            if arg not in {"clean", "validate", "compile", "test-compile"}:
+                return False
+    return False
 
 
 def _safe_evidence_path(value: Any, workspace: Path) -> str | None:
@@ -197,6 +229,7 @@ def codex_evidence(stdout: str, workspace: Path) -> dict[str, Any]:
             record: dict[str, Any] = {
                 "kind": "test" if _test_command(command) else "command",
                 "command": command[:COMMAND_LIMIT],
+                "command_truncated": len(command) > COMMAND_LIMIT,
                 "status": item.get("status") if isinstance(item.get("status"), str) else None,
                 "exit_code": item.get("exit_code") if isinstance(item.get("exit_code"), int) else None,
             }
@@ -247,46 +280,65 @@ def _git_output(workspace: Path, *args: str) -> str:
     return stdout
 
 
-def _numstat(workspace: Path, *revision: str) -> list[dict[str, Any]]:
+def _numstat(workspace: Path, *revision: str) -> tuple[list[dict[str, Any]] | None, bool]:
     try:
         output = _git_output(workspace, "diff", "--numstat", *revision, "--", ".")
     except (OSError, subprocess.SubprocessError):
-        return []
+        return None, False
     rows: list[dict[str, Any]] = []
     for line in output.splitlines():
         parts = line.split("\t", 2)
         if len(parts) != 3:
             continue
+        if len(rows) >= EVIDENCE_ITEM_LIMIT:
+            return rows, True
         added, deleted, path = parts
         rows.append({
             "path": path[:PATH_LIMIT],
             "added": int(added) if added.isdigit() else None,
             "deleted": int(deleted) if deleted.isdigit() else None,
         })
-        if len(rows) >= EVIDENCE_ITEM_LIMIT:
-            break
-    return rows
+    return rows, False
 
 
 def git_snapshot(workspace: Path) -> dict[str, Any]:
     try:
-        head = _git_output(workspace, "rev-parse", "HEAD").strip()
-        status_output = _git_output(workspace, "status", "--porcelain=v1", "--untracked-files=all", "--", ".")
+        if _git_output(workspace, "rev-parse", "--is-inside-work-tree").strip() != "true":
+            return {"available": False}
     except (OSError, subprocess.SubprocessError):
         return {"available": False}
-    status: list[dict[str, str]] = []
-    for line in status_output.splitlines():
-        if len(line) < 3:
-            continue
-        status.append({"code": line[:2], "path": line[3:][:PATH_LIMIT]})
-        if len(status) >= EVIDENCE_ITEM_LIMIT:
-            break
+    try:
+        head = _git_output(workspace, "rev-parse", "HEAD").strip()
+    except (OSError, subprocess.SubprocessError):
+        head = None
+    status: list[dict[str, str]] | None = None
+    status_truncated = False
+    dirty: bool | None = None
+    try:
+        status_output = _git_output(workspace, "status", "--porcelain=v1", "--untracked-files=all", "--", ".")
+        dirty = bool(status_output)
+        status = []
+        for line in status_output.splitlines():
+            if len(line) < 3:
+                continue
+            if len(status) >= EVIDENCE_ITEM_LIMIT:
+                status_truncated = True
+                break
+            status.append({"code": line[:2], "path": line[3:][:PATH_LIMIT]})
+    except (OSError, subprocess.SubprocessError):
+        pass
+    working_diff, working_diff_truncated = _numstat(workspace, "HEAD")
     return {
         "available": True,
-        "head": head[:128],
-        "dirty": bool(status_output),
+        "head": head[:128] if head is not None else None,
+        "head_available": head is not None,
+        "dirty": dirty,
         "status": status,
-        "working_diff": _numstat(workspace, "HEAD"),
+        "status_available": status is not None,
+        "status_truncated": status_truncated,
+        "working_diff": working_diff,
+        "working_diff_available": working_diff is not None,
+        "working_diff_truncated": working_diff_truncated,
     }
 
 
@@ -295,19 +347,38 @@ def git_evidence(workspace: Path, before: dict[str, Any], after: dict[str, Any])
         return {"available": False}
     before_head = before.get("head")
     after_head = after.get("head")
-    committed_diff: list[dict[str, Any]] = []
-    if isinstance(before_head, str) and isinstance(after_head, str) and before_head != after_head:
-        committed_diff = _numstat(workspace, f"{before_head}..{after_head}")
-    return {
+    committed_diff: list[dict[str, Any]] | None = None
+    committed_diff_truncated = False
+    if isinstance(before_head, str) and isinstance(after_head, str):
+        if before_head == after_head:
+            committed_diff = []
+        else:
+            committed_diff, committed_diff_truncated = _numstat(workspace, f"{before_head}..{after_head}")
+    evidence = {
         "available": True,
         "head_before": before_head,
         "head_after": after_head,
-        "dirty_before": bool(before.get("dirty")),
-        "dirty_after": bool(after.get("dirty")),
-        "status_after": after.get("status", []),
-        "working_diff": after.get("working_diff", []),
+        "dirty_before": before.get("dirty"),
+        "dirty_after": after.get("dirty"),
+        "status_after": after.get("status"),
+        "working_diff": after.get("working_diff"),
         "committed_diff": committed_diff,
+        "committed_diff_available": committed_diff is not None,
+        "committed_diff_truncated": committed_diff_truncated,
     }
+    for name, snapshot in (("before", before), ("after", after)):
+        evidence[f"head_{name}_available"] = snapshot.get("head_available") is True
+        evidence[f"status_{name}_available"] = snapshot.get("status_available") is True
+        evidence[f"status_{name}_truncated"] = snapshot.get("status_truncated") is True
+        diff_prefix = "working_diff_before" if name == "before" else "working_diff"
+        evidence[f"{diff_prefix}_available"] = snapshot.get("working_diff_available") is True
+        evidence[f"{diff_prefix}_truncated"] = snapshot.get("working_diff_truncated") is True
+    evidence["complete"] = all(
+        value is True if key.endswith("_available") else value is False
+        for key, value in evidence.items()
+        if key.endswith(("_available", "_truncated"))
+    )
+    return evidence
 
 
 def execute_work(work: dict[str, Any], workspace_root: Path) -> tuple[str, dict[str, Any]]:

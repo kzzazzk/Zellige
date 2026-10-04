@@ -106,6 +106,11 @@ export function RunReview({ run }: { run: Run }) {
                   <code className="block whitespace-pre-wrap break-all rounded bg-background px-2 py-1 text-[10px]">
                     {command}
                   </code>
+                  {entry.command_truncated === true && (
+                    <p className="text-[10px] text-muted-foreground">
+                      El texto de este comando fue truncado.
+                    </p>
+                  )}
                 </li>
               );
             })}
@@ -147,6 +152,36 @@ export function RunReview({ run }: { run: Run }) {
           </p>
         ) : (
           <>
+            {git?.complete !== true && (
+              <p className="text-[10px] text-muted-foreground">
+                Evidencia Git incompleta: alguna lectura no está disponible o no se confirma completa.
+              </p>
+            )}
+            {git?.status_after_available === false && (
+              <p className="text-[10px] text-muted-foreground">
+                El estado Git al terminar no está disponible.
+              </p>
+            )}
+            {git?.working_diff_available === false && (
+              <p className="text-[10px] text-muted-foreground">
+                Los cambios sin commit no están disponibles.
+              </p>
+            )}
+            {git?.committed_diff_available === false && (
+              <p className="text-[10px] text-muted-foreground">
+                Los cambios entre commits no están disponibles.
+              </p>
+            )}
+            {(git?.status_before_truncated === true || git?.status_after_truncated === true) && (
+              <p className="text-[10px] text-muted-foreground">
+                La lista de estado Git fue truncada.
+              </p>
+            )}
+            {(git?.working_diff_before_truncated === true || git?.working_diff_truncated === true || git?.committed_diff_truncated === true) && (
+              <p className="text-[10px] text-muted-foreground">
+                La lista de cambios Git fue truncada.
+              </p>
+            )}
             {git?.dirty_before === true && (
               <p className="text-[10px] text-muted-foreground">
                 El workspace ya tenía cambios antes de esta ejecución.
@@ -175,7 +210,7 @@ export function RunReview({ run }: { run: Run }) {
             )}
             <DiffRows title="Cambios sin commit" entries={workingDiff} />
             <DiffRows title="Cambios entre commits" entries={committedDiff} />
-            {!statusAfter.length && !workingDiff.length && !committedDiff.length && (
+            {git?.complete === true && git?.dirty_after === false && !statusAfter.length && !workingDiff.length && !committedDiff.length && (
               <p className="text-[10px] text-muted-foreground">
                 El workspace terminó sin cambios Git pendientes.
               </p>
