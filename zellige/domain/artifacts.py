@@ -1,3 +1,5 @@
+"""Artifacts are content-addressed: identical bytes always get the same identity."""
+import hashlib
 from dataclasses import dataclass
 
 
@@ -9,3 +11,15 @@ class Artifact:
     media_type: str
     storage_key: str
     created_at: int
+
+
+def artifact_for(content: bytes, media_type: str, now: int) -> Artifact:
+    digest = hashlib.sha256(content).hexdigest()
+    return Artifact(
+        id=f"artifact_sha256_{digest}",
+        sha256=digest,
+        size_bytes=len(content),
+        media_type=media_type or "application/octet-stream",
+        storage_key=f"sha256/{digest[:2]}/{digest[2:]}",
+        created_at=now,
+    )

@@ -1,51 +1,67 @@
-# Incremental hexagonal backend refactor
+# Backend architecture: pragmatic hexagonal
 
-The first migrated use case is `POST /v1/artifacts`. Its HTTP contract, SHA-256
-identity, storage layout, SQLite schema and changes cursor remain unchanged.
+The daemon is a small core with two edges. Clients (the web pilot and any future
+frontend) reach it through HTTP; the core reaches storage through one port.
+The goal is clarity with little ceremony: most operations are CRUD and stay one
+or two lines; only the operations with real rules get more.
 
-## Responsibilities
+```
+HTTP (FastAPI)  ──▶  Zellige (application)  ──▶  Store port  ◀──  SQLite adapter
+  server.py            application/zellige.py      ports.py        adapters/sqlite.py
+                              │
+                              ▼
+                       domain rules (pure functions)
+```
+
+## Files
 
 | File | Responsibility |
 | --- | --- |
-| `zellige/domain/artifacts.py` | Immutable artifact metadata, without infrastructure dependencies. |
-| `zellige/application/artifacts.py` | Store-artifact use case: derive identity, persist bytes, register metadata. |
-| `zellige/application/ports.py` | Blob storage, artifact repository and clock contracts. |
-| `zellige/adapters/artifacts.py` | Filesystem and SQLite implementations. |
-| `zellige/bootstrap.py` | Wire the artifact use case to production adapters. |
-| `zellige/server.py` | FastAPI transport, authorization, request limits and daemon startup. |
-| `zellige/service.py` | Existing service facade; delegates artifact writes to the new use case. |
+| `zellige/domain/conversations.py` | Pure rules: head check, conversation revision, version bump, artifact links, ancestry walk. |
+| `zellige/domain/payloads.py` | Item payload validation against the canonical schema. |
+| `zellige/domain/artifacts.py` | Content addressing: identity and storage key from the bytes. |
+| `zellige/domain/models.py`, `errors.py` | Records exchanged with the store; `DomainError` (kind + code, no HTTP status). |
+| `zellige/application/zellige.py` | `Zellige`: every operation a client can perform. The single entry point for all adapters. |
+| `zellige/application/ports.py` | `Store` (read/write sessions) and `BlobStore`: the only two ports. |
+| `zellige/adapters/sqlite.py` | All SQL, migrations and transactions; writes the `changes` log on every write. |
+| `zellige/adapters/files.py` | Artifact bytes as files under `blobs/`, named by hash. |
+| `zellige/server.py` | HTTP adapter: routes (auth applied once to all of `/v1`), body limits, `DomainError` kind → status; composition root (`build_app`). |
 
-Domain and application code must not import FastAPI, SQLite, filesystem adapters
-or the legacy service. Dependencies point from adapters towards the application
-ports and domain. HTTP-specific request validation remains at the API boundary.
-The existing service constructor remains compatible with direct callers.
+## Rules of thumb
 
-## Persistence guarantees
+- **One persistence port.** The core opens `store.read()` or `store.write()` and asks
+  the session for exactly what it needs. No repository per table, no unit-of-work
+  factory. A write session is one `BEGIN IMMEDIATE` transaction; constraint failures
+  surface as `PersistenceConflict`, which the core turns into a domain conflict.
+- **The change log is the adapter's job.** Every session write records its change in
+  the same transaction, so use cases cannot forget to publish one.
+- **CRUD stays thin.** Listing or creating a profile, context pack, branch or
+  conversation is a direct session call. Logic lives in `append_item` (head check,
+  run membership, artifact links, atomic head move), `update_conversation`
+  (optimistic concurrency, archiving), `create_run` (pins the input head),
+  `history` (ancestry with cycle detection) and `put_artifact` (bytes before metadata).
+- **No transport in the core.** The core raises `DomainError("conflict" | "invalid" |
+  "not_found" | "internal", code, message)`; only `server.py` knows those are 409, 400,
+  404 and 500. Error codes and the HTTP contract are unchanged.
+- **Dependencies point inwards.** Domain and application import neither FastAPI, SQLite
+  nor adapters. One accepted exception: payload validation reuses the pydantic
+  `ItemPayload` model from `api_models.py`, so the item schema has a single definition.
 
-Blob publication precedes metadata registration. SQLite commits new metadata and
-its change event in one `BEGIN IMMEDIATE` transaction. Repeated or concurrent
-uploads return the first stored metadata and emit only one event. Failed blob
-publication leaves no metadata or temporary file.
+## Adding a frontend
 
-As before, the filesystem and SQLite are not one transaction: a database failure
-can leave an unreferenced blob. Retrying the same bytes safely completes the
-operation. This change does not introduce blob garbage collection.
+Every frontend uses the same HTTP API (OpenAPI at `/openapi.json`) and syncs from
+`GET /v1/changes`. A new adapter, such as a CLI or an MCP server, calls `Zellige`
+directly, with no HTTP in between.
 
-## Next slices
+## Guarantees kept from before
 
-Conversations, branches/items, runtime profiles, context packs and runs still use
-the legacy service. Extract them by use case, preserving transaction boundaries
-and existing API tests. In particular, append-item must keep head comparison,
-item insertion, branch advancement and change events atomic; do not split those
-steps across independently committing repositories.
-
-Once those slices migrate, remove the legacy facade and separate the HTTP adapter
-from CLI startup. Avoid a generic repository that exposes SQL connections to the
-application layer.
+Append-item keeps head comparison, item insertion, branch advancement and the
+change events in one transaction. Blob publication precedes artifact metadata;
+a database failure can leave an unreferenced blob, and retrying the same bytes
+completes the operation (no blob garbage collection yet).
 
 ## Verification
 
-Run `uv run python -m unittest discover -s tests -v`. Artifact tests cover the use
-case with memory ports, concurrent deduplication, metadata/event rollback and
-cleanup after failed filesystem publication. Existing API tests exercise the
-production wiring and linking artifacts into conversation history.
+`uv run python -m unittest discover -s tests -v`: `test_domain` covers the rules
+without storage, `test_artifacts` artifact identity, deduplication and rollback, and
+`test_service` the whole API through the production wiring.

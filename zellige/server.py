@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import uvicorn
-from fastapi import Body, Depends, FastAPI, Header, Query, Request, Security
+from fastapi import APIRouter, Body, Depends, FastAPI, Header, Query, Request, Security
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -38,13 +38,24 @@ from .api_models import (
     RuntimeProfileListResponse,
     UpdateConversationRequest,
 )
-from .bootstrap import build_artifact_use_case
-from .database import Database
-from .service import ServiceError, ZelligeService
+from .adapters.files import FileBlobStore
+from .adapters.sqlite import Database, SQLiteStore, now_us
+from .application.zellige import Zellige
+from .domain.errors import DomainError
 
 
 JSON_BODY_LIMIT = 2 * 1024 * 1024
 ARTIFACT_BODY_LIMIT = 100 * 1024 * 1024
+# How each kind of domain failure is expressed over HTTP; the core knows nothing of status codes.
+STATUS = {"invalid": 400, "not_found": 404, "conflict": 409, "internal": 500}
+
+
+class HTTPError(Exception):
+    """Failures that only exist at the HTTP edge: authentication and body limits."""
+
+    def __init__(self, status: int, code: str, message: str):
+        super().__init__(message)
+        self.status, self.code, self.message = status, code, message
 
 
 def error_response(description: str, code: str, message: str) -> dict[str, Any]:
@@ -76,12 +87,9 @@ LENGTH_REQUIRED = error_response(
     "Content-Length is required.", "length_required", "Content-Length is required"
 )
 
+ERRORS = {400: BAD_REQUEST, 401: UNAUTHORIZED, 404: NOT_FOUND, 409: CONFLICT,
+          411: LENGTH_REQUIRED, 413: TOO_LARGE}
 
-def _service(request: Request) -> ZelligeService:
-    return request.app.state.service
-
-
-Service = Annotated[ZelligeService, Depends(_service)]
 bearer = HTTPBearer(
     auto_error=False,
     scheme_name="BearerAuth",
@@ -99,13 +107,10 @@ def _authorize(
         or credentials.scheme.lower() != "bearer"
         or not hmac.compare_digest(credentials.credentials, token)
     ):
-        raise ServiceError(401, "unauthorized", "a valid bearer token is required")
+        raise HTTPError(401, "unauthorized", "a valid bearer token is required")
 
 
-Authorization = Annotated[None, Depends(_authorize)]
-
-
-def create_app(service: ZelligeService, token: str) -> FastAPI:
+def create_app(zellige: Zellige, token: str) -> FastAPI:
     if not token:
         raise ValueError("ZELLIGE_API_TOKEN must not be empty")
 
@@ -130,15 +135,19 @@ def create_app(service: ZelligeService, token: str) -> FastAPI:
             {"name": "artifacts", "description": "Content-addressed binary storage."},
         ],
     )
-    app.state.service = service
+    app.state.zellige = zellige
     app.state.token = token
 
-    @app.exception_handler(ServiceError)
-    async def service_error_handler(_request: Request, error: ServiceError) -> JSONResponse:
+    @app.exception_handler(DomainError)
+    async def domain_error_handler(_request: Request, error: DomainError) -> JSONResponse:
         detail: dict[str, Any] = {"code": error.code, "message": error.message}
         if error.details is not None:
             detail["details"] = error.details
-        return JSONResponse(status_code=error.status, content={"error": detail})
+        return JSONResponse(status_code=STATUS[error.kind], content={"error": detail})
+
+    @app.exception_handler(HTTPError)
+    async def http_error_handler(_request: Request, error: HTTPError) -> JSONResponse:
+        return JSONResponse(status_code=error.status, content={"error": {"code": error.code, "message": error.message}})
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
@@ -186,270 +195,130 @@ def create_app(service: ZelligeService, token: str) -> FastAPI:
                 )
         return await call_next(request)
 
-    @app.get(
-        "/health",
-        response_model=HealthResponse,
-        operation_id="getHealth",
-        tags=["system"],
-        summary="Check daemon and database health",
-    )
-    def health(service: Service) -> dict[str, str]:
-        return {"status": "ok", "database": service.database.quick_check()}
+    z = zellige
 
-    @app.get(
-        "/v1/conversations", response_model=ConversationListResponse,
-        operation_id="listConversations", tags=["conversations"],
-        summary="List active or archived conversations, ordered by recent activity",
-        responses={401: UNAUTHORIZED},
-    )
-    def list_conversations(
-        service: Service, _authorization: Authorization,
-        archived: bool = False, query: str = "",
-        limit: Annotated[int, Query(ge=1, le=200)] = 50,
-        offset: Annotated[int, Query(ge=0)] = 0,
-    ) -> dict[str, Any]:
-        return service.list_conversations(archived, query, limit, offset)
+    def data(body: Any) -> dict[str, Any]:
+        return body.model_dump(mode="json", exclude_none=True)
 
-    @app.get(
-        "/v1/conversations/{conversation_id}", response_model=Conversation,
-        operation_id="getConversation", tags=["conversations"],
-        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
-    )
-    def get_conversation(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
-        return service.get_conversation(conversation_id)
+    def errors(*statuses: int) -> dict[int | str, dict[str, Any]]:
+        return {status: ERRORS[status] for status in statuses}
 
-    @app.patch(
-        "/v1/conversations/{conversation_id}", response_model=Conversation,
-        operation_id="updateConversation", tags=["conversations"],
-        summary="Rename, archive, or restore a conversation with optimistic metadata checking",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 404: NOT_FOUND, 409: CONFLICT},
-    )
-    def update_conversation(
-        conversation_id: str, body: UpdateConversationRequest,
-        service: Service, _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.update_conversation(conversation_id, body.model_dump(exclude_none=True))
+    @app.get("/health", response_model=HealthResponse, operation_id="getHealth", tags=["system"],
+             summary="Check daemon and database health")
+    def health() -> dict[str, Any]:
+        return z.health()
 
-    @app.get(
-        "/v1/conversations/{conversation_id}/branches", response_model=BranchListResponse,
-        operation_id="listBranches", tags=["conversations"],
-        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
-    )
-    def list_branches(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
-        return service.list_branches(conversation_id)
+    # Every /v1 route requires the bearer token (and documents its 401).
+    v1 = APIRouter(prefix="/v1", dependencies=[Depends(_authorize)], responses=errors(401))
 
-    @app.get(
-        "/v1/runtime-profiles", response_model=RuntimeProfileListResponse,
-        operation_id="listRuntimeProfiles", tags=["execution"],
-        summary="List execution profiles with their latest immutable version",
-        responses={401: UNAUTHORIZED},
-    )
-    def list_runtime_profiles(service: Service, _authorization: Authorization) -> dict[str, Any]:
-        return service.list_runtime_profiles()
+    # --- Conversations, branches and items -----------------------------------
+    @v1.get("/conversations", response_model=ConversationListResponse, operation_id="listConversations",
+            tags=["conversations"], summary="List active or archived conversations, ordered by recent activity")
+    def list_conversations(archived: bool = False, query: str = "",
+                           limit: Annotated[int, Query(ge=1, le=200)] = 50,
+                           offset: Annotated[int, Query(ge=0)] = 0) -> dict[str, Any]:
+        return z.list_conversations(archived, query, limit, offset)
 
-    @app.get(
-        "/v1/conversations/{conversation_id}/runs", response_model=RunListResponse,
-        operation_id="listConversationRuns", tags=["execution"],
-        summary="Read the 50 most recent runs of a conversation",
-        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
-    )
-    def list_runs(conversation_id: str, service: Service, _authorization: Authorization) -> dict[str, Any]:
-        return service.list_runs(conversation_id)
+    @v1.post("/conversations", response_model=CreateConversationResponse, status_code=201,
+             operation_id="createConversation", tags=["conversations"],
+             summary="Create a conversation and its initial branch", responses=errors(400, 409, 413))
+    def create_conversation(body: CreateConversationRequest) -> dict[str, Any]:
+        return z.create_conversation(data(body))
 
-    @app.post(
-        "/v1/conversations",
-        response_model=CreateConversationResponse,
-        status_code=201,
-        operation_id="createConversation",
-        tags=["conversations"],
-        summary="Create a conversation and its initial branch",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 409: CONFLICT, 413: TOO_LARGE},
-    )
-    def create_conversation(
-        body: CreateConversationRequest, service: Service, _authorization: Authorization
-    ) -> dict[str, Any]:
-        return service.create_conversation(body.model_dump(mode="json", exclude_none=True))
+    @v1.get("/conversations/{conversation_id}", response_model=Conversation, operation_id="getConversation",
+            tags=["conversations"], responses=errors(404))
+    def get_conversation(conversation_id: str) -> dict[str, Any]:
+        return z.get_conversation(conversation_id)
 
-    @app.post(
-        "/v1/conversations/{conversation_id}/branches",
-        response_model=Branch,
-        status_code=201,
-        operation_id="createBranch",
-        tags=["conversations"],
-        summary="Create a branch at an item in the same conversation",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 409: CONFLICT, 413: TOO_LARGE},
-    )
-    def create_branch(
-        conversation_id: str,
-        body: CreateBranchRequest,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.create_branch(
-            conversation_id, body.model_dump(mode="json", exclude_none=True)
-        )
+    @v1.patch("/conversations/{conversation_id}", response_model=Conversation, operation_id="updateConversation",
+              tags=["conversations"], responses=errors(400, 404, 409),
+              summary="Rename, archive, or restore a conversation with optimistic metadata checking")
+    def update_conversation(conversation_id: str, body: UpdateConversationRequest) -> dict[str, Any]:
+        return z.update_conversation(conversation_id, body.model_dump(exclude_none=True))
 
-    @app.post(
-        "/v1/conversations/{conversation_id}/branches/{branch_id}/items",
-        response_model=Item,
-        status_code=201,
-        operation_id="appendItem",
-        tags=["conversations"],
-        summary="Append an immutable item with optimistic head checking",
-        description=(
-            "The item parent is the supplied expected head. A stale head returns HTTP 409; "
-            "the server never silently rebases an item."
-        ),
-        responses={
-            400: BAD_REQUEST,
-            401: UNAUTHORIZED,
-            404: NOT_FOUND,
-            409: CONFLICT,
-            413: TOO_LARGE,
-        },
-    )
-    def append_item(
-        conversation_id: str,
-        branch_id: str,
-        body: AppendItemRequest,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.append_item(
-            conversation_id, branch_id, body.model_dump(mode="json", exclude_none=True)
-        )
+    @v1.get("/conversations/{conversation_id}/branches", response_model=BranchListResponse,
+            operation_id="listBranches", tags=["conversations"], responses=errors(404))
+    def list_branches(conversation_id: str) -> dict[str, Any]:
+        return z.list_branches(conversation_id)
 
-    @app.get(
-        "/v1/conversations/{conversation_id}/branches/{branch_id}/history",
-        response_model=BranchHistoryResponse,
-        operation_id="getBranchHistory",
-        tags=["conversations"],
-        summary="Reconstruct branch history from its current head",
-        responses={401: UNAUTHORIZED, 404: NOT_FOUND},
-    )
-    def branch_history(
-        conversation_id: str,
-        branch_id: str,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.history(conversation_id, branch_id)
+    @v1.post("/conversations/{conversation_id}/branches", response_model=Branch, status_code=201,
+             operation_id="createBranch", tags=["conversations"], responses=errors(400, 409, 413),
+             summary="Create a branch at an item in the same conversation")
+    def create_branch(conversation_id: str, body: CreateBranchRequest) -> dict[str, Any]:
+        return z.create_branch(conversation_id, data(body))
 
-    @app.post(
-        "/v1/runtime-profiles",
-        response_model=CreateRuntimeProfileResponse,
-        status_code=201,
-        operation_id="createRuntimeProfile",
-        tags=["execution"],
-        summary="Create a runtime profile with immutable version 1",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 409: CONFLICT, 413: TOO_LARGE},
-    )
-    def create_runtime_profile(
-        body: CreateRuntimeProfileRequest,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.create_runtime_profile(body.model_dump(mode="json", exclude_none=True))
+    @v1.post("/conversations/{conversation_id}/branches/{branch_id}/items", response_model=Item, status_code=201,
+             operation_id="appendItem", tags=["conversations"], responses=errors(400, 404, 409, 413),
+             summary="Append an immutable item with optimistic head checking",
+             description="The item parent is the supplied expected head. A stale head returns HTTP 409; "
+                         "the server never silently rebases an item.")
+    def append_item(conversation_id: str, branch_id: str, body: AppendItemRequest) -> dict[str, Any]:
+        return z.append_item(conversation_id, branch_id, data(body))
 
-    @app.post(
-        "/v1/context-packs",
-        response_model=CreateContextPackResponse,
-        status_code=201,
-        operation_id="createContextPack",
-        tags=["execution"],
-        summary="Create a context pack with immutable version 1",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 409: CONFLICT, 413: TOO_LARGE},
-    )
-    def create_context_pack(
-        body: CreateContextPackRequest,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.create_context_pack(body.model_dump(mode="json", exclude_none=True))
+    @v1.get("/conversations/{conversation_id}/branches/{branch_id}/history", response_model=BranchHistoryResponse,
+            operation_id="getBranchHistory", tags=["conversations"], responses=errors(404),
+            summary="Reconstruct branch history from its current head")
+    def branch_history(conversation_id: str, branch_id: str) -> dict[str, Any]:
+        return z.history(conversation_id, branch_id)
 
-    @app.post(
-        "/v1/context-packs/{context_pack_id}/versions",
-        response_model=ContextPackVersion,
-        status_code=201,
-        operation_id="createContextPackVersion",
-        tags=["execution"],
-        summary="Add an immutable context pack version",
-        responses={
-            400: BAD_REQUEST,
-            401: UNAUTHORIZED,
-            404: NOT_FOUND,
-            409: CONFLICT,
-            413: TOO_LARGE,
-        },
-    )
-    def create_context_pack_version(
-        context_pack_id: str,
-        body: CreateContextPackVersionRequest,
-        service: Service,
-        _authorization: Authorization,
-    ) -> dict[str, Any]:
-        return service.add_context_pack_version(
-            context_pack_id, body.model_dump(mode="json", exclude_none=True)
-        )
+    # --- Execution -----------------------------------------------------------------
+    @v1.get("/runtime-profiles", response_model=RuntimeProfileListResponse, operation_id="listRuntimeProfiles",
+            tags=["execution"], summary="List execution profiles with their latest immutable version")
+    def list_runtime_profiles() -> dict[str, Any]:
+        return z.list_runtime_profiles()
 
-    @app.post(
-        "/v1/runs",
-        response_model=Run,
-        status_code=201,
-        operation_id="createRun",
-        tags=["execution"],
-        summary="Create a queued run using exact profile and context versions",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 409: CONFLICT, 413: TOO_LARGE},
-    )
-    def create_run(
-        body: CreateRunRequest, service: Service, _authorization: Authorization
-    ) -> dict[str, Any]:
-        return service.create_run(body.model_dump(mode="json", exclude_none=True))
+    @v1.post("/runtime-profiles", response_model=CreateRuntimeProfileResponse, status_code=201,
+             operation_id="createRuntimeProfile", tags=["execution"], responses=errors(400, 409, 413),
+             summary="Create a runtime profile with immutable version 1")
+    def create_runtime_profile(body: CreateRuntimeProfileRequest) -> dict[str, Any]:
+        return z.create_runtime_profile(data(body))
 
-    @app.get(
-        "/v1/changes",
-        response_model=ChangesResponse,
-        operation_id="getChanges",
-        tags=["sync"],
-        summary="Read canonical changes after a monotonic cursor",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED},
-    )
-    def get_changes(
-        service: Service,
-        _authorization: Authorization,
-        cursor: Annotated[int, Query(ge=0, description="Last fully applied change sequence.")] = 0,
-        limit: Annotated[int, Query(ge=1, le=1000)] = 100,
-    ) -> dict[str, Any]:
-        return service.changes(cursor, limit)
+    @v1.post("/context-packs", response_model=CreateContextPackResponse, status_code=201,
+             operation_id="createContextPack", tags=["execution"], responses=errors(400, 409, 413),
+             summary="Create a context pack with immutable version 1")
+    def create_context_pack(body: CreateContextPackRequest) -> dict[str, Any]:
+        return z.create_context_pack(data(body))
 
-    @app.post(
-        "/v1/artifacts",
-        response_model=Artifact,
-        status_code=201,
-        operation_id="putArtifact",
-        tags=["artifacts"],
-        summary="Store binary content by SHA-256",
-        description="The response is idempotent for identical bytes. The upload limit is 100 MiB.",
-        responses={400: BAD_REQUEST, 401: UNAUTHORIZED, 411: LENGTH_REQUIRED, 413: TOO_LARGE},
-    )
+    @v1.post("/context-packs/{context_pack_id}/versions", response_model=ContextPackVersion, status_code=201,
+             operation_id="createContextPackVersion", tags=["execution"], responses=errors(400, 404, 409, 413),
+             summary="Add an immutable context pack version")
+    def create_context_pack_version(context_pack_id: str, body: CreateContextPackVersionRequest) -> dict[str, Any]:
+        return z.add_context_pack_version(context_pack_id, data(body))
+
+    @v1.get("/conversations/{conversation_id}/runs", response_model=RunListResponse,
+            operation_id="listConversationRuns", tags=["execution"], responses=errors(404),
+            summary="Read the 50 most recent runs of a conversation")
+    def list_runs(conversation_id: str) -> dict[str, Any]:
+        return z.list_runs(conversation_id)
+
+    @v1.post("/runs", response_model=Run, status_code=201, operation_id="createRun", tags=["execution"],
+             summary="Create a queued run using exact profile and context versions", responses=errors(400, 409, 413))
+    def create_run(body: CreateRunRequest) -> dict[str, Any]:
+        return z.create_run(data(body))
+
+    # --- Sync and artifacts --------------------------------------------------------
+    @v1.get("/changes", response_model=ChangesResponse, operation_id="getChanges", tags=["sync"],
+            summary="Read canonical changes after a monotonic cursor", responses=errors(400))
+    def get_changes(cursor: Annotated[int, Query(ge=0, description="Last fully applied change sequence.")] = 0,
+                    limit: Annotated[int, Query(ge=1, le=1000)] = 100) -> dict[str, Any]:
+        return z.changes(cursor, limit)
+
+    @v1.post("/artifacts", response_model=Artifact, status_code=201, operation_id="putArtifact", tags=["artifacts"],
+             summary="Store binary content by SHA-256", responses=errors(400, 411, 413),
+             description="The response is idempotent for identical bytes. The upload limit is 100 MiB.")
     def put_artifact(
-        content: Annotated[
-            bytes,
-            Body(
-                media_type="application/octet-stream",
-                description="Raw artifact bytes. Use the actual media type in Content-Type.",
-            ),
-        ],
-        service: Service,
-        _authorization: Authorization,
+        content: Annotated[bytes, Body(media_type="application/octet-stream",
+                                       description="Raw artifact bytes. Use the actual media type in Content-Type.")],
         content_length: Annotated[int | None, Header(alias="Content-Length")] = None,
         content_type: Annotated[str | None, Header(alias="Content-Type")] = None,
     ) -> dict[str, Any]:
         if content_length is None:
-            raise ServiceError(411, "length_required", "Content-Length is required")
+            raise HTTPError(411, "length_required", "Content-Length is required")
         if content_length > ARTIFACT_BODY_LIMIT or len(content) > ARTIFACT_BODY_LIMIT:
-            raise ServiceError(413, "body_too_large", "artifact is too large")
-        return service.put_artifact(content, content_type or "application/octet-stream")
+            raise HTTPError(413, "body_too_large", "artifact is too large")
+        return z.put_artifact(content, content_type or "application/octet-stream")
+
+    app.include_router(v1)
 
     generated_openapi = app.openapi
 
@@ -478,12 +347,10 @@ def build_app(data_dir: Path, token: str, web_dir: Path | None = None) -> FastAP
         if packaged_migrations.is_dir()
         else project_root / "migrations"
     )
+    # Composition root: the core, wired to SQLite and the local file system.
     database = Database(data_dir / "zellige.sqlite3", migrations_dir)
-    blob_dir = data_dir / "blobs"
-    service = ZelligeService(
-        database, blob_dir, artifacts=build_artifact_use_case(database, blob_dir)
-    )
-    app = create_app(service, token)
+    app = create_app(Zellige(SQLiteStore(database), FileBlobStore(data_dir / "blobs"), now_us), token)
+    app.state.database = database
     assets = web_dir if web_dir is not None else project_root / "web" / "dist"
     if (assets / "index.html").is_file():
         app.mount("/", StaticFiles(directory=assets, html=True), name="web")

@@ -65,7 +65,7 @@ jobs:
           from zellige.server import build_app
           with TemporaryDirectory() as directory:
               app = build_app(Path(directory), "distribution-test-token")
-              assert app.state.service.database.quick_check() == "ok"
+              assert app.state.database.quick_check() == "ok"
               assert "/v1/conversations" in app.openapi()["paths"]
           '
           done

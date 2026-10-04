@@ -173,7 +173,7 @@ class APITestCase(unittest.TestCase):
     def test_metadata_version_advances_even_when_clock_moves_backwards(self) -> None:
         conversation_id, branch_id = self.make_conversation()
         previous = self.request("GET", f"/v1/conversations/{conversation_id}")[1]["updated_at"]
-        with patch("zellige.service.now_us", return_value=1):
+        with patch.object(self.app.state.zellige, "clock", lambda: 1):
             self.assertEqual(self.append_message(conversation_id, branch_id, None, "Saved")[0], 201)
             current = self.request("GET", f"/v1/conversations/{conversation_id}")[1]["updated_at"]
             self.assertGreater(current, previous)
@@ -296,7 +296,7 @@ class APITestCase(unittest.TestCase):
         )
         self.assertEqual(status, 200)
         self.assertEqual(history["items"][0]["id"], item["id"])
-        with self.app.state.service.database.connect() as connection:
+        with self.app.state.database.connect() as connection:
             self.assertEqual(connection.execute("PRAGMA journal_mode").fetchone()[0], "wal")
             self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
             self.assertEqual(connection.execute("PRAGMA quick_check").fetchone()[0], "ok")
@@ -323,7 +323,7 @@ class APITestCase(unittest.TestCase):
             },
         )
         self.assertEqual(status, 201)
-        with self.app.state.service.database.connect() as connection:
+        with self.app.state.database.connect() as connection:
             link = connection.execute(
                 "SELECT artifact_id FROM item_artifacts WHERE item_id = ?", (item["id"],)
             ).fetchone()
