@@ -94,11 +94,12 @@ tab's `sessionStorage`; the appearance preference uses `localStorage`.
 
 Codex-local execution is available through the separate `zellige-worker` process.
 Create a **Codex local** profile, queue a run, and start a worker with the same API
-token and an explicit workspace root. Run state remains canonical in the daemon;
-use **Sincronizar cambios** in the details panel to pull worker transitions,
-results and persisted execution evidence. Automatic browser sync and account login are not implemented yet. A
-concurrent append returns 409, refreshes history, keeps the draft, and never
-retries silently. Archive is reversible organization, not deletion; archived
+token and an explicit workspace root. Run state remains canonical in the daemon.
+While the selected conversation has a queued or running Run, the browser
+automatically drains `/v1/changes` and refreshes authoritative state; it stops once
+the Run becomes terminal. **Sincronizar cambios** remains available as a manual
+fallback in the details panel. Account login is not implemented yet. A concurrent
+append returns 409, refreshes history, keeps the draft, and never retries silently. Archive is reversible organization, not deletion; archived
 histories remain writable.
 
 For frontend development with live reload, keep the backend running and use

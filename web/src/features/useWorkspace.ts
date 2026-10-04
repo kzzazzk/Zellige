@@ -12,13 +12,16 @@ import { useExecutionState } from "./workspace/useExecutionState";
 import { executionActions } from "./workspace/executionActions";
 import { useDiagnostics } from "./workspace/useDiagnostics";
 import { syncActions } from "./workspace/syncActions";
+import { useRunAutoSync } from "./workspace/useRunAutoSync";
 
 export type { Thread } from "./workspace/types";
 
 export function useWorkspace(navigation?: WorkspaceNavigation) {
   const saved = useWorkspaceSnapshot();
   const operation = useWorkspaceOperation(!!saved.token);
-  const { busy, failure, lastResponse, lastStatus, actionRunning, record, perform: rawPerform, setFailure, setLastResponse, setLastStatus, releaseBootstrap } = operation;
+  const { busy, failure, lastResponse, lastStatus, actionRunning, record, perform: rawPerform,
+    performBackground, supersedeBackground, setFailure, setLastResponse, setLastStatus,
+    releaseBootstrap } = operation;
   const { page, setPage, archived, setArchived, query, setQuery, thread, setThread,
     profiles, setProfiles, clearServerState, restoreServerState } = useWorkspaceServerState();
   const [initialRequest] = useState(() => navigation?.locationRequest);
@@ -56,6 +59,7 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
 
   function disconnect() {
     if (actionRunning.current || pending || (navigation && navigation.request() !== routeRequest)) return;
+    supersedeBackground();
     drafts.reset();
     setQueuedFor(null);
     navigation?.navigate(null);
@@ -72,6 +76,7 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
 
   function newChat() {
     if (!actionRunning.current && !pending && (!navigation || navigation.request() === routeRequest)) {
+      supersedeBackground();
       navigation?.navigate(null);
       setThread(null);
       setFailure(null);
@@ -93,9 +98,26 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
   const { addProfile, queueRun } = executionActions({ client, perform, record, thread, profileId,
     draftKey, setThread, setProfiles, setProfileId, setQueuedFor,
   });
-  const { readChanges } = syncActions({
-    client, perform, record, archived, query, thread, setPage, setThread, setProfiles, ...diagnostics,
+  const { readChanges, readChangesInBackground } = syncActions({
+    client, perform, performBackground, record, archived, query, thread,
+    setPage, setThread, setProfiles, ...diagnostics,
   });
+  const hasActiveRun = thread?.runs.some(
+    (run) => run.status === "queued" || run.status === "running",
+  ) ?? false;
+  function syncActiveRouteInBackground() {
+    const requestedRoute = navigation?.request();
+    if (navigation && requestedRoute !== routeRequest)
+      return Promise.resolve(false);
+    return readChangesInBackground(
+      () => !navigation || navigation.request() === requestedRoute,
+    );
+  }
+  useRunAutoSync(
+    connected && !pending && hasActiveRun,
+    syncActiveRouteInBackground,
+    supersedeBackground,
+  );
 
   return {
     draft: pending ? "" : draft,
