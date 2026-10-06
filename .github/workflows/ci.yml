@@ -2,7 +2,6 @@ name: CI pilot
 
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main, minimal-mvp-chat-web]
   workflow_dispatch:
