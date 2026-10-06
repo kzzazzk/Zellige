@@ -5,13 +5,13 @@ export async function publishPilot({ env = process.env, fetchImpl = fetch, wait 
   const required = ['APPROVED_SHA', 'GITHUB_REPOSITORY', 'VERCEL_ORG_ID', 'VERCEL_PILOT_PROJECT_ID', 'VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID', 'VERCEL_TOKEN'];
   for (const key of required) if (!env[key]) throw new Error(`Missing ${key}`);
   if (!/^[a-f0-9]{40}$/.test(env.APPROVED_SHA)) throw new Error('Invalid approved commit');
-  if (env.GITHUB_REPOSITORY !== 'kzzazzk/Zellige') throw new Error('Unexpected source repository');
+  if (env.GITHUB_REPOSITORY !== 'zellige-oss/Zellige') throw new Error('Unexpected source repository');
 
   const branch = env.APPROVED_BRANCH || 'main';
   if (!['main', 'minimal-mvp-chat-web'].includes(branch)) throw new Error('Invalid approved branch');
 
   async function currentBranch() {
-    const response = await fetchImpl(`https://api.github.com/repos/kzzazzk/Zellige/git/ref/heads/${encodeURIComponent(branch)}`, {
+    const response = await fetchImpl(`https://api.github.com/repos/zellige-oss/Zellige/git/ref/heads/${encodeURIComponent(branch)}`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'zellige-pilot-cd' },
       signal: AbortSignal.timeout(20000),
     });

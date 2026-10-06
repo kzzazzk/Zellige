@@ -1,24 +1,16 @@
 # Continuous integration
 
-## Branch delivery (2026-10-03)
+## Repository scope
 
-Pushes to `minimal-mvp-chat-web` run both CI workflows. Each successful required
-check calls its own reusable deployment workflow from that same commit. This
-explicitly publishes the branch to the existing landing production and private
-pilot environments without merging into `main`. The deployment checks that the
-approved SHA is still the head of the source branch. Other feature branches and
-PRs cannot publish. The existing `main` workflow-run path remains available.
-CI cancellation is disabled so a newer push cannot interrupt publication.
-This branch delivery supersedes the main-only activation instructions below.
+The `CI pilot` workflow validates this application's web frontend, backend and
+packaging. The public website has its own repository and CI in
+[zellige-oss/landing](https://github.com/zellige-oss/landing).
 
-
-Work enters `main` through short-lived branches and pull requests. The GitHub
-Actions workflows `CI pilot` (`.github/workflows/ci.yml`) and `CI marketing`
-(`.github/workflows/ci-marketing.yml`) run independently on PRs targeting `main`,
-pushes to `main`, and manual dispatches. There is no `develop` branch.
-Feature branches can use any name (`codex/…`, `feature/…`, or the existing MVP
-branch); the PR target determines whether CI runs. Updating an open PR reruns
-validation. Feature pushes without a PR do not start duplicate CI runs.
+Pushes to `minimal-mvp-chat-web` run pilot CI and can call its reusable
+deployment workflow from the validated commit. `[skip pilot deploy]` disables
+that publication. The approved SHA must still be the source branch head.
+PRs targeting any branch, pushes to `main`, and manual dispatches also run CI.
+Other feature pushes do not automatically deploy.
 
 ## Bootstrap while main has no MVP
 
@@ -28,7 +20,7 @@ publish the deployment workflows alone against the initial `main`, which does
 not contain their application files. Manual workflow dispatch becomes available
 once the workflow exists on the default branch.
 
-SonarQube is temporarily disabled in both workflows. Its existing project
+SonarQube is temporarily disabled in the pilot workflow. Its existing project
 configuration is retained for later reactivation, but no Sonar credentials or
 quality gate are required for CI or deployment.
 
@@ -36,9 +28,6 @@ quality gate are required for CI or deployment.
 
 - **Web lint, types, tests and build** installs from `web/package-lock.json`
   with `npm ci`, then checks ESLint, TypeScript, Vitest, and the Vite build.
-- **Landing lint, types, build and checks** installs from
-  `marketing/package-lock.json`, builds the public landing, checks its output,
-  and verifies the packaged artifact.
 - **Build** checks the dependency lock, builds the Python source distribution
   and wheel, verifies both can create a database from their packaged migrations,
   and builds the Docker image. Python distributions are retained for seven days
@@ -46,13 +35,10 @@ quality gate are required for CI or deployment.
 - **Tests** runs the API suite with line and branch coverage, then retains
   `coverage.xml` for seven days.
 
-Landing runs in CI marketing. Web, Build, and Tests run in parallel in CI pilot.
-There is no SonarQube job in either workflow. Dependencies are resolved from
-the two npm lockfiles and `uv.lock`, and third-party actions are pinned to
-verified commit hashes. Each CI workflow grants only read access to repository
-contents; it does not publish packages.
-Newer runs cancel in-progress validation for the same branch or PR within that
-application only; the workflows have separate concurrency groups.
+Web, Build, and Tests run in parallel in CI pilot. Dependencies are resolved
+from `web/package-lock.json` and `uv.lock`; third-party actions use pinned
+commit hashes. Validation has read-only repository permissions. Concurrency
+cancellation is disabled so newer pushes do not interrupt an active run.
 Distribution and Python coverage artifacts are retained for seven days.
 
 ## Future SonarQube setup (inactive)
@@ -97,11 +83,10 @@ active GitHub branch ruleset for `main` with:
 
 - Pull requests required. Require one approval when another reviewer is available;
   a solo maintainer must not be blocked by an approval they cannot provide.
-- Independent status checks: **Pilot CI required** evaluates Web, Build, and Tests;
-  **Marketing CI required** evaluates Landing. Each fails if its
-  own validations fail, are cancelled, or are skipped. There is no global gate.
-  Requiring both in branch protection would block PR merging when either fails;
-  this is a separate policy decision, not a dependency between deployments.
+- Require **Pilot CI required**, which evaluates Web, Build and Tests and fails
+  when any validation fails, is cancelled or skipped. Remove the former
+  **Marketing CI required** requirement if configured; that check now belongs
+  to the website repository.
 - Dismiss outdated approvals, require resolved review conversations, and require
   the branch to be up to date before merging.
 - Block force pushes and branch deletion, with no routine bypass actors.
@@ -112,7 +97,7 @@ status should be required while its integration is disabled.
 
 ## External contributions
 
-Both CI workflows run without repository secrets, including on fork PRs.
+Pilot CI runs without repository secrets, including on fork PRs.
 Deployment credentials are used only by the separate CD workflows after a
 successful push to this repository's main branch.
 
@@ -138,40 +123,11 @@ by Git.
 
 ## Delivery
 
-The separate `Deploy marketing to Vercel` workflow builds and publishes the
-public landing from `main`. Automatic publication waits for a successful
-`CI marketing` push run on `main` and
-uses that exact commit; a newer main commit supersedes the release. Manual
-publication is an explicit operator action, not a feature-branch CI side effect. See [landing deployment setup and
-operations](../deployment/vercel.md). The private pilot has a separate CD triggered only by successful `CI pilot` push runs
-on `main`; it reuses the external gateway and selects the exact approved SHA. They do not merge branches or publish the landing. Nightly publication,
-registry publishing, and version-tag releases remain disabled.
+The private pilot has its own [deployment workflow](../deployment/pilot-cd.md).
+It uses the exact validated commit and compares it with the last READY
+production deployment. Changes to `web/`, `zellige/`, `migrations/`, `schemas/`,
+`app.py`, Python dependencies or pilot deployment scripts trigger publication.
+Docs-only and test-only changes do not publish after CI passes. An unknown
+baseline triggers a conservative rebuild. Deleted and renamed files count.
 
-
-## Automatic deployment selection
-
-Landing CD listens only for CI marketing; pilot CD listens only for CI pilot.
-Both accept only successful runs caused by a push to main from this repository.
-A failed marketing CI or CD does not block pilot publication, and a failed pilot
-CI or CD does not block landing publication. PR CI and manual CI do not deploy
-the pilot. There is no develop branch or feature-branch publication.
-
-Each CD compares the approved commit with its own last READY production
-version's source metadata. This includes changes left pending by a failed CI,
-failed deployment, or superseded release. It is not just the last commit's diff.
-Deleted and renamed files count. If the baseline is unknown, rebuild once.
-
-| Changed files | Deployment |
-| --- | --- |
-| `marketing/**`, landing packaging/configuration or landing workflow | Landing |
-| `web/**`, `zellige/**`, `migrations/**`, `schemas/**`, `app.py`, Python dependencies or pilot CD | Private pilot |
-| Both groups, or the shared deployment selection helper | Both |
-| Only docs or tests | Neither, after CI passes |
-
-Both CI workflows validate every PR and push to main, without workflow-level
-path filters. Each has its own required-status job. Deployment selection then
-limits publication to applications with pending changes. The deployment workflows may appear as successful runs with publishing
-steps skipped when their application has no pending changes. Explicit manual
-landing deployment remains available and bypasses only the change filter.
-
-See [private pilot CD](../deployment/pilot-cd.md) for its configuration.
+Website publication is managed exclusively by `zellige-oss/landing`.
