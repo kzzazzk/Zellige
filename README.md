@@ -120,9 +120,8 @@ Compose binds only to loopback and stores the database and blobs in the named
 `zellige-data` volume. Put a private reverse proxy or VPN in front of the API for
 remote-device access; do not expose the PoC directly to the public Internet.
 
-The private pilot uses `compose.lab.yaml`; local marketing is an opt-in fallback.
-The public landing runs at [zellige.dev](https://zellige.dev), with deployment
-instructions in [`docs/deployment/vercel.md`](docs/deployment/vercel.md).
+The private pilot uses `compose.lab.yaml`. The public website and its deployment
+live in [zellige-oss/landing](https://github.com/zellige-oss/landing).
 `compose.tailscale.yaml` adds two isolated VPN ingress connectors for sharing;
 see [`docs/deployment/lab.md`](docs/deployment/lab.md) for local secrets, proxy
 routes, persistent storage and the Tailscale sharing boundary. Reusable brand
@@ -150,12 +149,8 @@ requires a free OSS project and repository variables/secrets before its check
 can pass. Setup, required checks, and local commands are documented in
 [`docs/development/ci.md`](docs/development/ci.md).
 
-The public landing at `zellige.dev` is deployed on Vercel. Its separate GitHub
-Actions workflow publishes `marketing/` from `main`; see
-[deployment setup and operations](docs/deployment/vercel.md). The workflow runs
-independently of CI, so a successful deployment does not establish that the
-CI checks passed. The hosted landing does not expose the private pilot API.
-Backend deployment and release publishing remain disabled.
+The public website is maintained independently in
+[zellige-oss/landing](https://github.com/zellige-oss/landing).
 
 ## Scope
 
