@@ -1,4 +1,4 @@
-# Private pilot; optional local marketing fallback. No public bindings.
+# Private pilot. No public bindings.
 # Optional dedicated VPN ingress is defined separately in compose.tailscale.yaml.
 name: zellige-lab
 services:
@@ -19,23 +19,5 @@ services:
     cap_drop: [ALL]
     mem_limit: 256m
     cpus: 1.0
-  marketing:
-    profiles: [local-marketing]
-    build:
-      context: .
-      dockerfile: deploy/marketing.Dockerfile
-    image: zellige-marketing:local
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:18788:8080"
-    read_only: true
-    tmpfs:
-      - /config:size=4m,uid=10001,gid=10001,mode=0700
-      - /data:size=4m,uid=10001,gid=10001,mode=0700
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
-    mem_limit: 64m
-    cpus: 0.5
 volumes:
   pilot-data:

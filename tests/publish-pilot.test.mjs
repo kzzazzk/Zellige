@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { publishPilot } from '../deploy/publish-pilot.mjs';
 const sha = 'a'.repeat(40);
-const env = { APPROVED_SHA: sha, GITHUB_REPOSITORY: 'kzzazzk/Zellige', VERCEL_ORG_ID: 'test-team', VERCEL_PILOT_PROJECT_ID: 'test-project', VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: 'test-template', VERCEL_TOKEN: 'test-only-token' };
+const env = { APPROVED_SHA: sha, GITHUB_REPOSITORY: 'zellige-oss/Zellige', VERCEL_ORG_ID: 'test-team', VERCEL_PILOT_PROJECT_ID: 'test-project', VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: 'test-template', VERCEL_TOKEN: 'test-only-token' };
 function scenario({ main = sha, name = 'zellige-demo', configured = true, templateProject = 'test-project', result = 'READY' } = {}) {
   const writes = [];
   const fetchImpl = async (input, options = {}) => {
