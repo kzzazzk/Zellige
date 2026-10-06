@@ -121,5 +121,5 @@ claiming that feature-branch CI or browser review has run.
 - Backend adaptation must be separate and based on agreed contracts, not
   speculative dual-stack behavior.
 
-All continuation changes are intentionally left uncommitted. A subsequent PR,
-not a direct merge to `main`, is the delivery path.
+Phase 1 is committed on `frontend-v2-refactor` and delivered through PR #3.
+Subsequent frontend phases are reviewed separately through the stacked PR sequence.
