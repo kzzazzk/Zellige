@@ -15,11 +15,6 @@ web/dist/
 web/coverage/
 .impeccable/review/
 .runtime/
-.output/marketing/
-marketing/node_modules/
-marketing/dist/
-marketing/.ssr/
-marketing/.brand/
 .brand/
 
 # Private, disposable Vercel demo bundle and access credentials.

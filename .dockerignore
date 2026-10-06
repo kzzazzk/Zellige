@@ -17,6 +17,3 @@ web/dist
 web/coverage
 .impeccable
 .runtime/
-marketing/node_modules
-marketing/dist
-marketing/.ssr

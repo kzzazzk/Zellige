@@ -6,10 +6,9 @@ import { pathToFileURL } from 'node:url';
 export function affects(target, paths) {
   const shared = new Set(['deploy/deployment-scope.mjs']);
   const specific = {
-    marketing: new Set(['deploy/build-marketing.mjs', 'deploy/vercel-marketing.json', '.github/workflows/deploy-marketing.yml']),
     pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', 'deploy/resolve-pilot.mjs', '.github/workflows/deploy-pilot.yml']),
   };
-  const prefixes = { marketing: ['marketing/'], pilot: ['web/', 'zellige/', 'migrations/', 'schemas/'] };
+  const prefixes = { pilot: ['web/', 'zellige/', 'migrations/', 'schemas/'] };
   if (!specific[target]) throw new Error('Unknown deployment target');
   return paths.some(path => shared.has(path) || specific[target].has(path) || prefixes[target].some(prefix => path.startsWith(prefix)));
 }
@@ -27,7 +26,7 @@ export async function deploymentChanged({ env = process.env, fetchImpl = fetch, 
   for (const key of ['DEPLOY_TARGET', 'APPROVED_SHA', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID', 'VERCEL_TOKEN']) {
     if (!env[key]) throw new Error(`Missing ${key}`);
   }
-  const expectedName = { marketing: 'zellige', pilot: 'zellige-demo' }[env.DEPLOY_TARGET];
+  const expectedName = { pilot: 'zellige-demo' }[env.DEPLOY_TARGET];
   if (!expectedName) throw new Error('Unknown deployment target');
   async function api(path) {
     const url = new URL(path, 'https://api.vercel.com');

@@ -1,14 +1,4 @@
-# Merge these two sites into the existing private Caddyfile (do not duplicate).
-# The second bind address is the dedicated Docker ingress network's gateway.
-# Create the networks from compose.tailscale.yaml before loading these binds.
-zellige.lab.kzzazzk.tech {
-    bind 100.108.41.61 10.204.87.1
-    import cloudflare_tls
-    @unexpected_host not host zellige.lab.kzzazzk.tech
-    respond @unexpected_host 404
-    reverse_proxy 127.0.0.1:18788
-}
-
+# Merge into the existing private Caddyfile after reviewing live binds.
 zellige-dev.lab.kzzazzk.tech {
     bind 100.108.41.61 10.204.88.1
     import cloudflare_tls
@@ -18,8 +8,8 @@ zellige-dev.lab.kzzazzk.tech {
 }
 
 # Caddy otherwise returns an empty 200 when no hostname route matches.
-# Explicitly reject every unmatched host on the two private listeners.
+# Explicitly reject every unmatched host on the private listener.
 https://:443 {
-    bind 10.204.87.1 10.204.88.1
+    bind 10.204.88.1
     respond 404
 }

@@ -1,28 +1,20 @@
 // Read-only deployment checks; requires Node.js and curl. No tokens are read.
-// Optional args override DNS before a cutover: node deploy/check-lab-ingress.mjs IP IP
+// Optional args override DNS before a cutover: node deploy/check-lab-ingress.mjs IP
 import { spawn } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
 import { isIP, createConnection } from 'node:net';
 
-const marketing = 'zellige.lab.kzzazzk.tech';
 const pilot = 'zellige-dev.lab.kzzazzk.tech';
-const marketingIP = process.argv[2] ?? (await lookup(marketing, { family: 4 })).address;
-const pilotIP = process.argv[3] ?? (await lookup(pilot, { family: 4 })).address;
-if (isIP(marketingIP) !== 4 || isIP(pilotIP) !== 4 || marketingIP === pilotIP) {
-  throw new Error('Expected two distinct IPv4 addresses for the private ingress nodes');
+const pilotIP = process.argv[2] ?? (await lookup(pilot, { family: 4 })).address;
+if (isIP(pilotIP) !== 4) {
+  throw new Error('Expected an IPv4 address for the private pilot ingress');
 }
 
 const cases = [
-  { name: 'marketing HTTPS', domain: marketing, ip: marketingIP, status: 200, title: true },
   { name: 'pilot HTTPS', domain: pilot, ip: pilotIP, status: 200, title: true },
   { name: 'pilot health', domain: pilot, ip: pilotIP, path: '/health', status: 200 },
   { name: 'pilot rejects missing bearer', domain: pilot, ip: pilotIP, path: '/v1/conversations', status: 401 },
-  { name: 'marketing has no API', domain: marketing, ip: marketingIP, path: '/v1/conversations', status: 404 },
-  { name: 'marketing rejects pilot hostname', domain: pilot, ip: marketingIP, status: 404 },
-  { name: 'pilot rejects marketing hostname', domain: marketing, ip: pilotIP, status: 404 },
-  { name: 'marketing rejects unrelated SNI/Host', domain: 'engram.lab.kzzazzk.tech', ip: marketingIP, status: 404 },
   { name: 'pilot rejects unrelated SNI/Host', domain: 'engram.lab.kzzazzk.tech', ip: pilotIP, status: 404 },
-  { name: 'marketing rejects spoofed Host', domain: marketing, ip: marketingIP, host: 'engram.lab.kzzazzk.tech', status: 404 },
   { name: 'pilot rejects spoofed Host', domain: pilot, ip: pilotIP, host: 'engram.lab.kzzazzk.tech', status: 404 },
 ];
 
@@ -72,7 +64,7 @@ function checkNoSSH(ip) {
 }
 
 const results = await Promise.all([
-  ...cases.map(checkHTTP), checkNoSSH(marketingIP), checkNoSSH(pilotIP),
+  ...cases.map(checkHTTP), checkNoSSH(pilotIP),
 ]);
 if (results.some(ok => !ok)) process.exitCode = 1;
-else console.log('All 13 ingress checks passed. These probes use this machine, not the collaborator account.');
+else console.log('All pilot ingress checks passed. These probes use this machine, not the collaborator account.');
