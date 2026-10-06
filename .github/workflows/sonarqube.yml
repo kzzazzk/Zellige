@@ -33,13 +33,18 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Detect Python coverage support
+      - name: Detect coverage support
         id: coverage
         run: |
           if [ -f pyproject.toml ] && [ -d tests ]; then
             echo "python=true" >> "$GITHUB_OUTPUT"
           else
             echo "python=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -f web/package-lock.json ] && [ -f web/package.json ]; then
+            echo "web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "web=false" >> "$GITHUB_OUTPUT"
           fi
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         if: steps.coverage.outputs.python == 'true'
@@ -49,9 +54,23 @@ jobs:
       - name: Produce coverage for the analyzed revision
         if: steps.coverage.outputs.python == 'true'
         run: |
-          uv sync --locked --dev
-          uv run --locked coverage run -m unittest discover -s tests -v
-          uv run --locked coverage xml
+          uv sync --locked --dev --no-install-project --no-build
+          uv run --locked --no-sync --no-build coverage run -m unittest discover -s tests -v
+          uv run --locked --no-sync --no-build coverage xml
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.coverage.outputs.web == 'true'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Produce frontend coverage for the analyzed revision
+        if: steps.coverage.outputs.web == 'true'
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts
+          vitest_version=$(node -p "require('./node_modules/vitest/package.json').version")
+          npm install --no-save --ignore-scripts "@vitest/coverage-v8@$vitest_version"
+          npm test -- --coverage --coverage.reporter=lcov
       - name: Analyze the revision and check its quality gate
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
         env:
