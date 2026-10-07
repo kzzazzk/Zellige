@@ -3,15 +3,13 @@ import { listConversations } from "../../api/conversations";
 import { listProfiles } from "../../api/runs";
 import { ApiError } from "../../api/types";
 import type { ConversationPage, Profile } from "../../api/types";
-import type { Dispatch, SetStateAction } from "react";
 import type { Operation } from "./useWorkspaceOperation";
 
 type Dependencies = Pick<Operation, "perform" | "record"> & {
   onConnected: (token: string) => void;
-  setPage: Dispatch<SetStateAction<ConversationPage>>;
-  setProfiles: Dispatch<SetStateAction<Profile[]>>;
+  restoreServerState: (page: ConversationPage, profiles: Profile[], thread: null) => void;
 };
-export function connectionActions({ perform, record, onConnected, setPage, setProfiles }: Dependencies) {
+export function connectionActions({ perform, record, onConnected, restoreServerState }: Dependencies) {
   function connect(value: string) {
     return perform(async () => {
       const next = value.trim();
@@ -22,9 +20,8 @@ export function connectionActions({ perform, record, onConnected, setPage, setPr
         listConversations(connection),
         listProfiles(connection),
       ]);
+      restoreServerState(record(conversations), profileList.data.profiles, null);
       onConnected(next);
-      setPage(record(conversations));
-      setProfiles(profileList.data.profiles);
     });
   }
 
