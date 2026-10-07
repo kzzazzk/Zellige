@@ -22,7 +22,7 @@ from canonical conversation data.
 The current app manages conversations, immutable messages, branches, profiles
 and queued runs. Edits fork history; archives are reversible. No AI runner,
 streaming replies, accounts or automatic synchronization is implemented yet.
-See README.md and docs/architecture/database.md for the authoritative scope.
+See README.md and openspec/architecture/database.md for the authoritative scope.
 
 ## Brand Commitments
 
