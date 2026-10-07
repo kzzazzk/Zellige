@@ -19,7 +19,3 @@ web/coverage/
 
 # Private, disposable Vercel demo bundle and access credentials.
 /.runtime/vercel-demo/
-
-# Retired host-only pilot CD; the Vercel workflow is versioned separately.
-/deploy/pilot-release.py
-/tests/test_pilot_release.py
