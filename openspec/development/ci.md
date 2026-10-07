@@ -6,11 +6,8 @@ The `CI pilot` workflow validates this application's web frontend, backend and
 packaging. The public website has its own repository and CI in
 [zellige-oss/landing](https://github.com/zellige-oss/landing).
 
-Pushes to `minimal-mvp-chat-web` run pilot CI and can call its reusable
-deployment workflow from the validated commit. `[skip pilot deploy]` disables
-that publication. The approved SHA must still be the source branch head.
-PRs targeting any branch, pushes to `main`, and manual dispatches also run CI.
-Other feature pushes do not automatically deploy.
+Pull requests merged into `main` or `minimal-mvp-chat-web` run pilot CI and then
+call the reusable deployment workflow.
 
 ## Bootstrap while main has no MVP
 
@@ -123,10 +120,6 @@ by Git.
 ## Delivery
 
 The private pilot has its own [deployment workflow](../deployment/pilot-cd.md).
-It uses the exact validated commit and compares it with the last READY
-production deployment. Changes to `web/`, `zellige/`, `db/migrations/`, `db/schemas/`,
-`app.py`, Python dependencies or pilot deployment scripts trigger publication.
-Docs-only and test-only changes do not publish after CI passes. An unknown
-baseline triggers a conservative rebuild. Deleted and renamed files count.
-
-Website publication is managed exclusively by `zellige-oss/landing`.
+It deploys only when the merged PR changed `web/`, `zellige/`, `db/`, `app.py`,
+`pyproject.toml`, `uv.lock` or the workflow itself; docs-only and test-only
+changes do not publish.
