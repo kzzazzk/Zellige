@@ -62,9 +62,9 @@ Profiles created through `POST /v1/runtime-profiles` may also specify:
 the required root. Absolute paths, `..` components and symlink-resolved escapes
 are rejected. Internal symlinks resolve to their canonical relative path.
 The operator must control the directory tree and keep symlink targets stable
-during execution. The selected directory must satisfy Codex CLI's normal repository
-checks. This boundary selects the working directory; Codex's sandbox and project
-execpolicy rules continue to control model-generated commands.
+during execution. Non-Git workspaces are allowed; when project execpolicy rules
+exist, they remain in force. The workspace boundary and Codex sandbox still
+constrain model-generated commands.
 
 `model` is optional and must be a non-empty string. `reasoning_effort` accepts
 only `low`, `medium`, `high` or `ultra`. `mode` is an optional non-empty string.
@@ -72,12 +72,12 @@ only `low`, `medium`, `high` or `ultra`. `mode` is an optional non-empty string.
 Unknown fields, arbitrary executable/argv/shell and `danger-full-access` are
 rejected. Run request data cannot configure the process.
 
-The installed CLI must support `codex exec --json --output-last-message` and
-`--ignore-user-config`. Read-only execution sets `--sandbox read-only` and
-`approval_policy="never"`. Workspace writes use `--approve-for-me`, the installed
-CLI's automatic approval review. Project execpolicy rules are not bypassed;
-authentication still comes from local Codex credentials. Local execpolicy rules remain in force. The operator must trust
-the workspace instructions and restrict the root to allowed directories.
+The installed CLI must support `codex exec --json --output-last-message`,
+`--ignore-user-config` and `--skip-git-repo-check`. Read-only execution sets
+`--sandbox read-only` and `approval_policy="never"`. Workspace writes use
+`--approve-for-me`, the installed CLI's automatic approval review. User config is
+ignored so the immutable runtime profile controls execution, but execpolicy rules
+are not bypassed. Authentication still comes from local Codex credentials.
 
 ## HTTP and execution contract
 
