@@ -149,7 +149,7 @@ class APITestCase(unittest.TestCase):
         legacy_dir = self.data_dir / "legacy"
         legacy_dir.mkdir()
         connection = sqlite3.connect(legacy_dir / "zellige.sqlite3")
-        migration = Path(__file__).resolve().parents[1] / "migrations" / "001_initial.sql"
+        migration = Path(__file__).resolve().parents[1] / "db" / "migrations" / "001_initial.sql"
         connection.executescript(migration.read_text())
         connection.execute("INSERT INTO schema_migrations VALUES (1, 1)")
         connection.execute("INSERT INTO conversations VALUES ('legacy', 'Existing chat', 1, 1, NULL)")
@@ -410,7 +410,7 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(oversized.json()["error"]["code"], "body_too_large")
 
         checked_in_schema = json.loads(
-            (Path(__file__).parents[1] / "schemas" / "item-payload.schema.json").read_text()
+            (Path(__file__).parents[1] / "db" / "schemas" / "item-payload.schema.json").read_text()
         )
         self.assertEqual(checked_in_schema, item_payload_json_schema())
 
