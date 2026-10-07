@@ -124,7 +124,7 @@ by Git.
 
 The private pilot has its own [deployment workflow](../deployment/pilot-cd.md).
 It uses the exact validated commit and compares it with the last READY
-production deployment. Changes to `web/`, `zellige/`, `migrations/`, `schemas/`,
+production deployment. Changes to `web/`, `zellige/`, `db/migrations/`, `db/schemas/`,
 `app.py`, Python dependencies or pilot deployment scripts trigger publication.
 Docs-only and test-only changes do not publish after CI passes. An unknown
 baseline triggers a conservative rebuild. Deleted and renamed files count.
