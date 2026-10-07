@@ -20,39 +20,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pilot-development
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PILOT_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN }}
+      APPROVED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-      - name: Resolve the existing pilot deployment configuration
-        env:
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PILOT_PROJECT_ID: ${{ vars.VERCEL_PILOT_PROJECT_ID }}
-          VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: ${{ vars.VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN }}
-        run: node deploy/resolve-pilot.mjs
-      - name: Check changes since this application was deployed
+      - name: Check for application changes
         id: scope
         env:
-          DEPLOY_TARGET: pilot
-          APPROVED_BRANCH: ${{ github.event.pull_request.base.ref }}
-          APPROVED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PILOT_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN }}
-        run: node deploy/deployment-scope.mjs
-      - name: Publish the exact branch commit approved by CI
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA" "$APPROVED_SHA" -- web zellige db app.py pyproject.toml uv.lock .github/workflows/cd.yml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No application changes; skipping deployment."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.changed == 'true'
+        with:
+          node-version: "24"
+      - name: Point the gateway at the approved commit
+        if: steps.scope.outputs.changed == 'true'
+        run: npx --yes vercel@62.7.0 env add DEV_SOURCE_SHA production --force --value "$APPROVED_SHA" --no-sensitive
+      - name: Redeploy the gateway
         if: steps.scope.outputs.changed == 'true'
         env:
-          APPROVED_BRANCH: ${{ github.event.pull_request.base.ref }}
-          APPROVED_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PILOT_PROJECT_ID: ${{ env.VERCEL_PILOT_PROJECT_ID }}
-          VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID: ${{ env.VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_REPOSITORY_TOKEN }}
-        run: node deploy/publish-pilot.mjs
+          GATEWAY_DEPLOYMENT_ID: ${{ vars.VERCEL_PILOT_GATEWAY_DEPLOYMENT_ID }}
+        run: npx --yes vercel@62.7.0 redeploy "$GATEWAY_DEPLOYMENT_ID" --target production
