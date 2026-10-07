@@ -9,8 +9,7 @@ import {
   Search,
   Settings2,
 } from "lucide-react";
-import type { Conversation } from "../api/types";
-import type { Workspace } from "../features/useWorkspace";
+import type { Conversation, ConversationPage } from "../api/types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -23,18 +22,25 @@ import { cn } from "../lib/utils";
 import { BrandEmblem, BrandWordmark, StarGlyph } from "./Brand";
 
 type Props = {
-  workspace: Workspace;
+  page: ConversationPage;
+  selectedId?: string;
+  connected: boolean;
+  busy: boolean;
+  archived: boolean;
+  query: string;
+  refresh: () => Promise<boolean>;
+  newChat: () => void;
+  search: (value: string, showArchived?: boolean) => Promise<boolean>;
+  selectConversation: (id: string, branchId?: string) => Promise<boolean>;
+  changeConversation: (conversation: Conversation, change: { title?: string; archived?: boolean }) => Promise<boolean>;
+  loadMore: () => Promise<boolean>;
   onSettings: () => void;
   onRename: (conversation: Conversation) => void;
   onNavigate: () => void;
 };
 
-export function Sidebar({
-  workspace: w,
-  onSettings,
-  onRename,
-  onNavigate,
-}: Props) {
+export function Sidebar(w: Props) {
+  const { onSettings, onRename, onNavigate } = w;
   const [search, setSearch] = useState("");
   return (
     <nav
@@ -103,7 +109,7 @@ export function Sidebar({
             key={conversation.id}
             className={cn(
               "group relative mb-0.5 flex items-center rounded-md transition-colors",
-              w.thread?.conversation.id === conversation.id
+              w.selectedId === conversation.id
                 ? "bg-accent text-accent-foreground before:absolute before:inset-y-2 before:-left-2 before:w-0.5 before:rounded-full before:bg-seam"
                 : "hover:bg-muted",
             )}
@@ -112,7 +118,7 @@ export function Sidebar({
               className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-2.5 text-left text-[13px] disabled:opacity-50"
               disabled={w.busy}
               aria-current={
-                w.thread?.conversation.id === conversation.id
+                w.selectedId === conversation.id
                   ? "page"
                   : undefined
               }
@@ -122,10 +128,10 @@ export function Sidebar({
               }}
             >
               <StarGlyph
-                filled={w.thread?.conversation.id === conversation.id}
+                filled={w.selectedId === conversation.id}
                 className={cn(
                   "size-3.5",
-                  w.thread?.conversation.id === conversation.id
+                  w.selectedId === conversation.id
                     ? "text-brand-detail"
                     : "text-muted-foreground",
                 )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { KeyRound, Moon, Sun } from "lucide-react";
-import type { Workspace } from "../features/useWorkspace";
+import type { Profile } from "../api/types";
+import type { Failure } from "../features/workspace/types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -12,17 +13,22 @@ import {
 } from "./ui/dialog";
 import { NativeSelect, NativeSelectOption } from "./ui/native-select";
 
-export function Settings({
-  workspace: w,
-  onClose,
-  dark,
-  onTheme,
-}: {
-  workspace: Workspace;
+type SettingsProps = {
+  token: string;
+  connected: boolean;
+  busy: boolean;
+  profiles: Profile[];
+  failure: Failure | null;
+  connect: (token: string) => Promise<boolean>;
+  disconnect: () => void;
+  addProfile: (name: string, mode: string) => Promise<boolean>;
   onClose: () => void;
   dark: boolean;
   onTheme: () => void;
-}) {
+};
+
+export function Settings(w: SettingsProps) {
+  const { onClose, dark, onTheme } = w;
   const [token, setToken] = useState(w.token);
   const [name, setName] = useState("");
   const [mode, setMode] = useState("general");

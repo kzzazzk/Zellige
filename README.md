@@ -100,10 +100,16 @@ npm test
 npm run build
 ```
 
-`web/src/api/` owns HTTP contracts and bearer/error handling;
-`web/src/features/useWorkspace.ts` coordinates reads and optimistic writes;
-`web/src/components/` renders the sidebar, chat, settings and optional inspector;
-`web/src/storage/session.ts` owns tab-scoped restoration. Styling uses Tailwind
+`web/src/api/` owns HTTP contracts and bearer/error handling.
+`web/src/features/useWorkspace.ts` is the single workspace composition facade;
+focused state owners and explicit request workflows live in
+`web/src/features/workspace/`, sharing one synchronous operation gate.
+`web/src/app/` owns shell presentation, theme and naming prompts;
+`web/src/components/` renders the sidebar, chat, settings and optional inspector
+with explicit view/action props. Chat presentation lives in `components/chat/`.
+`web/src/storage/session.ts` keeps the unchanged tab-scoped storage contract.
+See [frontend Phase 1 ownership and behavior](openspec/development/frontend-phase-1.md).
+Styling uses Tailwind
 through the Vite plugin. `web/src/components/ui/` contains shadcn/ui's Base UI
 primitives (base-mira), with its MIT notice in `web/public/shadcn-LICENSE.txt`.
 

@@ -1,4 +1,4 @@
-import type { Workspace } from "../features/useWorkspace";
+import type { Change, Profile, Run } from "../api/types";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -8,13 +8,25 @@ import {
   SheetTitle,
 } from "./ui/sheet";
 
-export function Inspector({
-  workspace: w,
-  onClose,
-}: {
-  workspace: Workspace;
+type InspectorProps = {
+  runs: Run[];
+  conversationId?: string;
+  branchId?: string;
+  headItemId?: string | null;
+  profiles: Profile[];
+  connected: boolean;
+  busy: boolean;
+  lastStatus: number | null;
+  lastResponse: unknown;
+  cursor: number;
+  changes: Change[];
+  hasMoreChanges: boolean;
+  readChanges: () => Promise<boolean>;
   onClose: () => void;
-}) {
+};
+
+export function Inspector(w: InspectorProps) {
+  const { onClose } = w;
   return (
     <Sheet
       open
@@ -32,13 +44,13 @@ export function Inspector({
         <div className="space-y-6 px-5 pb-5">
           <section className="space-y-2">
             <h2 className="text-sm font-medium">Ejecuciones</h2>
-            {!w.thread?.runs.length && (
+            {!w.runs.length && (
               <p className="text-muted-foreground">
                 Todavía no hay ejecuciones.
               </p>
             )}
             <ul className="divide-y">
-              {w.thread?.runs.map((run) => (
+              {w.runs.map((run) => (
                 <li key={run.id} className="space-y-1 py-3">
                   <div className="flex items-center justify-between">
                     <span>
@@ -65,9 +77,9 @@ export function Inspector({
             <summary className="font-medium">Diagnóstico técnico</summary>
             <dl className="space-y-2 text-[11px]">
               {[
-                ["conversation_id", w.thread?.conversation.id],
-                ["branch_id", w.thread?.branch.id],
-                ["head_item_id", w.thread?.branch.head_item_id ?? "null"],
+                ["conversation_id", w.conversationId],
+                ["branch_id", w.branchId],
+                ["head_item_id", w.headItemId ?? "null"],
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-muted-foreground">{label}</dt>
