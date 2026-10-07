@@ -8,7 +8,7 @@ export function affects(target, paths) {
   const specific = {
     pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', 'deploy/resolve-pilot.mjs', '.github/workflows/cd.yml']),
   };
-  const prefixes = { pilot: ['web/', 'zellige/', 'migrations/', 'schemas/'] };
+  const prefixes = { pilot: ['web/', 'zellige/', 'db/'] };
   if (!specific[target]) throw new Error('Unknown deployment target');
   return paths.some(path => shared.has(path) || specific[target].has(path) || prefixes[target].some(prefix => path.startsWith(prefix)));
 }
