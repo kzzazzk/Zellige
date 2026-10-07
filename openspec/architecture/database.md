@@ -69,7 +69,7 @@ is outside the v1 PoC and should be rejected by the future runner layer.
 ## Item payload contract
 
 `items.payload_json` is governed by
-[`schemas/item-payload.schema.json`](../../schemas/item-payload.schema.json),
+[`db/schemas/item-payload.schema.json`](../../db/schemas/item-payload.schema.json),
 JSON Schema 2020-12, version 1. The envelope has a `type` discriminator equal to
 the relational `items.kind`. The Pydantic models in `zellige/api_models.py` are
 the source of truth for request validation, the OpenAPI components, and the
@@ -126,7 +126,7 @@ provider use the same external ID.
 
 ## Migration policy
 
-Numbered SQL files in `migrations/` are append-only after release. The daemon
+Numbered SQL files in `db/migrations/` are append-only after release. The daemon
 records applied versions in `schema_migrations`. During this PoC, migration 001
 may still be revised because no production database has been declared. Once v1
 is released, corrections must use a new numbered migration.
