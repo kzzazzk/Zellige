@@ -197,7 +197,7 @@ the repository port operation and its SQLite implementation, and the
 controller mapping. Business decisions belong in the domain; orchestration
 belongs in the application service; SQL belongs in the SQLite adapter. A change
 to the HTTP API fails the contract test until `uv run zellige-export-openapi`
-regenerates `schemas/openapi.json`; review that diff like any other code.
+regenerates `db/schemas/openapi.json`; review that diff like any other code.
 
 A frontend uses the HTTP API (`/openapi.json`) and syncs through `GET /v1/changes`.
 A CLI or MCP adapter goes in `adapter/<name>/` and is declared as an entry
@@ -215,7 +215,7 @@ read snapshots and ordered run inputs. Transaction tests exercise rollback
 across repositories after a late write failure and a deferred constraint failure
 at commit. API tests exercise production wiring, authentication, serialization,
 concurrency, migrations and restart persistence. The checked-in
-`schemas/openapi.json` and the published change-feed fields are compared on
+`db/schemas/openapi.json` and the published change-feed fields are compared on
 every run, so an unintended API change fails a test.
 
 `tests/test_architecture.py` checks import boundaries, including relative

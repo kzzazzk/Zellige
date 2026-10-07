@@ -49,8 +49,8 @@ output = "coverage.xml"
 packages = ["zellige"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"migrations" = "zellige/migrations"
-"schemas" = "zellige/schemas"
+"db/migrations" = "zellige/migrations"
+"db/schemas" = "zellige/schemas"
 
 [tool.ruff]
 target-version = "py312"

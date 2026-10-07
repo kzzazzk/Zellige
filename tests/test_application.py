@@ -32,7 +32,8 @@ class ApplicationTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         self.database = Database(
-            root / "test.sqlite3", Path(__file__).resolve().parents[1] / "migrations"
+            root / "test.sqlite3",
+            Path(__file__).resolve().parents[1] / "db" / "migrations",
         )
         self.unit_of_work = SQLiteUnitOfWork(self.database, lambda: 123)
         self.core = ZelligeConfiguration.use_cases(

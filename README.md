@@ -20,7 +20,7 @@ artifact storage.
 
 The data model and its current limits are documented in
 [`openspec/architecture/database.md`](openspec/architecture/database.md). The formal v1
-item contract is [`schemas/item-payload.schema.json`](schemas/item-payload.schema.json).
+item contract is [`db/schemas/item-payload.schema.json`](db/schemas/item-payload.schema.json).
 
 ## Run locally
 
@@ -125,7 +125,7 @@ uv run ruff check . && uv run ruff format --check .
 ```
 
 After an intended HTTP API change, regenerate the checked-in contract with
-`uv run zellige-export-openapi` and review the diff of `schemas/openapi.json`.
+`uv run zellige-export-openapi` and review the diff of `db/schemas/openapi.json`.
 
 The suite covers conversations, branches, concurrent HTTP writers, distinct run
 profile versions, outbox cursor reconnection, cross-conversation

@@ -37,7 +37,8 @@ class ArtifactStorageTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         self.database = Database(
-            root / "test.sqlite3", Path(__file__).resolve().parents[1] / "migrations"
+            root / "test.sqlite3",
+            Path(__file__).resolve().parents[1] / "db" / "migrations",
         )
         self.blobs = FileBlobStore(root / "blobs")
         self.service = ArtifactService(

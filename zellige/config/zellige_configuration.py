@@ -39,7 +39,7 @@ class ZelligeConfiguration:
         migrations_dir = (
             packaged_migrations
             if packaged_migrations.is_dir()
-            else project_root / "migrations"
+            else project_root / "db" / "migrations"
         )
         database = Database(self.data_dir / "zellige.sqlite3", migrations_dir)
         use_cases = self.use_cases(

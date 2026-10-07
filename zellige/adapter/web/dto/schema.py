@@ -36,7 +36,7 @@ def export_schemas() -> None:
         "output",
         nargs="?",
         type=Path,
-        default=Path("schemas/item-payload.schema.json"),
+        default=Path("db/schemas/item-payload.schema.json"),
     )
     output = parser.parse_args().output
     output.parent.mkdir(parents=True, exist_ok=True)

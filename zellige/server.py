@@ -30,7 +30,7 @@ def openapi_document() -> dict[str, Any]:
 def export_openapi() -> None:
     parser = argparse.ArgumentParser(description="Export the Zellige OpenAPI document")
     parser.add_argument(
-        "output", nargs="?", type=Path, default=Path("schemas/openapi.json")
+        "output", nargs="?", type=Path, default=Path("db/schemas/openapi.json")
     )
     output = parser.parse_args().output
     output.parent.mkdir(parents=True, exist_ok=True)

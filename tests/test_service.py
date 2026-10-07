@@ -218,7 +218,10 @@ class APITestCase(unittest.TestCase):
         legacy_dir.mkdir()
         connection = sqlite3.connect(legacy_dir / "zellige.sqlite3")
         migration = (
-            Path(__file__).resolve().parents[1] / "migrations" / "001_initial.sql"
+            Path(__file__).resolve().parents[1]
+            / "db"
+            / "migrations"
+            / "001_initial.sql"
         )
         connection.executescript(migration.read_text())
         connection.execute("INSERT INTO schema_migrations VALUES (1, 1)")
@@ -528,20 +531,23 @@ class APITestCase(unittest.TestCase):
 
         checked_in_schema = json.loads(
             (
-                Path(__file__).parents[1] / "schemas" / "item-payload.schema.json"
+                Path(__file__).parents[1]
+                / "db"
+                / "schemas"
+                / "item-payload.schema.json"
             ).read_text()
         )
         self.assertEqual(checked_in_schema, item_payload_json_schema())
 
     def test_http_contract_matches_the_checked_in_openapi_document(self) -> None:
         checked_in = json.loads(
-            (Path(__file__).parents[1] / "schemas" / "openapi.json").read_text()
+            (Path(__file__).parents[1] / "db" / "schemas" / "openapi.json").read_text()
         )
         self.assertEqual(
             checked_in,
             openapi_document(),
             "The HTTP API changed. If intended, run `uv run zellige-export-openapi` "
-            "and review the diff of schemas/openapi.json.",
+            "and review the diff of db/schemas/openapi.json.",
         )
 
 
