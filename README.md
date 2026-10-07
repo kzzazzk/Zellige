@@ -19,7 +19,7 @@ artifact storage.
 - Artifact bytes stored outside SQLite by SHA-256.
 
 The data model and its current limits are documented in
-[`docs/architecture/database.md`](docs/architecture/database.md). The formal v1
+[`openspec/architecture/database.md`](openspec/architecture/database.md). The formal v1
 item contract is [`schemas/item-payload.schema.json`](schemas/item-payload.schema.json).
 
 ## Run locally
@@ -113,26 +113,14 @@ Styling uses Tailwind
 through the Vite plugin. `web/src/components/ui/` contains shadcn/ui's Base UI
 primitives (base-mira), with its MIT notice in `web/public/shadcn-LICENSE.txt`.
 
-## Run with Docker Compose
+## Deployment
 
-```sh
-export ZELLIGE_API_TOKEN='replace-with-a-long-random-value'
-docker compose up --build -d
-docker compose ps
-```
-
-The image builds and includes the web app; open `http://127.0.0.1:8787`.
-Compose binds only to loopback and stores the database and blobs in the named
-`zellige-data` volume. Put a private reverse proxy or VPN in front of the API for
-remote-device access; do not expose the PoC directly to the public Internet.
-
-The private pilot uses `compose.lab.yaml`. The public website and its deployment
-live in [zellige-oss/landing](https://github.com/zellige-oss/landing).
-`compose.tailscale.yaml` adds two isolated VPN ingress connectors for sharing;
-see [`docs/deployment/lab.md`](docs/deployment/lab.md) for local secrets, proxy
-routes, persistent storage and the Tailscale sharing boundary. Reusable brand
-assets and their source prompts are documented in
-[`docs/design/brand-assets.md`](docs/design/brand-assets.md).
+The private pilot is deployed to Vercel by `.github/workflows/cd.yml`;
+see [`openspec/deployment/pilot-cd.md`](openspec/deployment/pilot-cd.md). The
+public website and its deployment live in
+[zellige-oss/landing](https://github.com/zellige-oss/landing). Reusable brand
+assets are documented in
+[`openspec/design/brand-assets.md`](openspec/design/brand-assets.md).
 
 ## Test
 
@@ -148,12 +136,12 @@ static serving without bypassing API authentication.
 
 ## Continuous integration
 
-PRs to `main` and pushes to `main` run package/Docker builds, backend tests with
+PRs to `main` and pushes to `main` run package builds, backend tests with
 coverage, and web lint/types/tests/build, followed by SonarQube Cloud analysis
 and its quality gate. Sonar
 requires a free OSS project and repository variables/secrets before its check
 can pass. Setup, required checks, and local commands are documented in
-[`docs/development/ci.md`](docs/development/ci.md).
+[`openspec/development/ci.md`](openspec/development/ci.md).
 
 The public website is maintained independently in
 [zellige-oss/landing](https://github.com/zellige-oss/landing).
