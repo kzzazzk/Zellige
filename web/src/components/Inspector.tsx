@@ -92,8 +92,9 @@ export function Inspector(w: InspectorProps) {
               ))}
             </ul>
             <p className="text-muted-foreground">
-              Inicia el worker local para ejecutar perfiles Codex. Usa Sincronizar
-              cambios para actualizar los estados y resultados.
+              Inicia el worker local para ejecutar perfiles Codex. Las ejecuciones
+              activas se actualizan automáticamente; la sincronización manual sigue
+              disponible en el diagnóstico técnico.
             </p>
           </section>
           <details className="space-y-3 border-t pt-4">

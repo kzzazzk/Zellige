@@ -213,7 +213,9 @@ describe("Query cache ownership", () => {
       expect(hasMore).toHaveBeenCalledWith(false);
     });
     const { readChanges } = syncActions({ ...result.current, client, cursor: 11,
-      perform: async (action) => { await action(); return true; }, record: (response) => response.data,
+      perform: async (action) => { await action(); return true; },
+      performBackground: async (action) => { await action(() => true); return true; },
+      record: (response) => response.data,
       setChanges: changes, setHasMoreChanges: hasMore, setCursor: cursor,
     });
     await act(async () => { expect(await readChanges()).toBe(true); });
