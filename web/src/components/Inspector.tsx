@@ -97,7 +97,7 @@ export function Inspector(w: InspectorProps) {
               disabled={!w.connected || w.busy}
               onClick={() => void w.readChanges()}
             >
-              Consultar cambios
+              Sincronizar cambios
             </Button>
             {w.hasMoreChanges && (
               <p className="text-muted-foreground">

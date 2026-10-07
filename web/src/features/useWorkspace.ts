@@ -13,6 +13,7 @@ import { messageActions } from "./workspace/messageActions";
 import { useExecutionState } from "./workspace/useExecutionState";
 import { executionActions } from "./workspace/executionActions";
 import { useDiagnostics } from "./workspace/useDiagnostics";
+import { syncActions } from "./workspace/syncActions";
 
 export type { Thread } from "./workspace/types";
 
@@ -32,7 +33,7 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
   const { draft, setDraft } = drafts;
   const { profiles, setProfiles, profileId, setProfileId, queuedFor, setQueuedFor } = useExecutionState();
   const diagnostics = useDiagnostics(saved.cursor);
-  const { cursor, setCursor, changes, setChanges, hasMoreChanges } = diagnostics;
+  const { cursor, changes, hasMoreChanges } = diagnostics;
   const restore = useCallback((page: ConversationPage, profiles: Profile[], thread: Thread | null) => {
     setPage(page);
     setProfiles(profiles);
@@ -73,8 +74,7 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
     setPage({ conversations: [], has_more: false });
     setFailure(null);
     setLastResponse(null);
-    setChanges([]);
-    setCursor(0);
+    diagnostics.reset();
     setLastStatus(null);
     setQuery("");
   }
@@ -102,7 +102,9 @@ export function useWorkspace(navigation?: WorkspaceNavigation) {
   const { addProfile, queueRun } = executionActions({ client, perform, record, thread, profileId,
     draftKey, setThread, setProfiles, setProfileId, setQueuedFor,
   });
-  const { readChanges } = diagnostics.actions(client, { ...operation, perform });
+  const { readChanges } = syncActions({
+    client, perform, record, archived, query, thread, setPage, setThread, setProfiles, ...diagnostics,
+  });
 
   return {
     draft: pending ? "" : draft,
