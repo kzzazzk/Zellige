@@ -1,1 +1,1 @@
-"""Domain values, independent of transport and storage."""
+"""Hexagon core: business model and rules, independent of I/O."""

@@ -29,4 +29,5 @@ See README.md and docs/architecture/database.md for the authoritative scope.
 The user requested a conversation-first interface inspired by T3 Code, using
 shadcn components. The supplied mascot moodboard defines the identity: ceramic
 blue/teal/ivory shapes with brass seams, deep navy surfaces and a friendly star
-companion. A separate minimal static marketing page lives in `marketing/`.
+companion. The marketing site lives in a separate repository,
+[zellige-oss/landing](https://github.com/zellige-oss/landing).

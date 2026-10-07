@@ -160,7 +160,6 @@ export function apiFixture() {
         status: "queued",
         input_head_item_id: branches[0].head_item_id,
         runtime_profile_version_id: String(body.runtime_profile_version_id),
-        context_pack_version_ids: [],
         created_at: 1,
       };
       runs.push(run);

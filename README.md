@@ -13,7 +13,7 @@ artifact storage.
 
 - Canonical conversations with branches and immutable structured items.
 - Atomic optimistic appends using `expected_head_item_id` and HTTP 409 conflicts.
-- Runs tied to immutable runtime-profile and context-pack versions.
+- Runs tied to immutable runtime-profile versions.
 - WAL, foreign keys, short write transactions, and restart persistence.
 - A transactional `changes` outbox for cursor-based incremental sync.
 - Artifact bytes stored outside SQLite by SHA-256.
@@ -132,10 +132,15 @@ assets and their source prompts are documented in
 
 ```sh
 uv run python -m unittest discover -s tests -v
+uv run mypy
+uv run ruff check . && uv run ruff format --check .
 ```
 
+After an intended HTTP API change, regenerate the checked-in contract with
+`uv run zellige-export-openapi` and review the diff of `schemas/openapi.json`.
+
 The suite covers conversations, branches, concurrent HTTP writers, distinct run
-profiles, versioned context packs, outbox cursor reconnection, cross-conversation
+profile versions, outbox cursor reconnection, cross-conversation
 integrity, content-addressed artifacts, WAL, persistence after daemon restart,
 v1-to-v2 migration, archived conversation management, metadata conflicts and
 static serving without bypassing API authentication.

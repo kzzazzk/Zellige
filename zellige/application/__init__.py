@@ -1,1 +1,1 @@
-"""Use cases and the ports they require."""
+"""Use cases and the ports they need from the outside."""

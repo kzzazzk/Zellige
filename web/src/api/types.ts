@@ -20,7 +20,6 @@ export type Run = {
   status: "queued" | "running" | "completed" | "failed" | "cancelled";
   input_head_item_id: string | null;
   runtime_profile_version_id: string;
-  context_pack_version_ids: string[];
   created_at: number;
 };
 
