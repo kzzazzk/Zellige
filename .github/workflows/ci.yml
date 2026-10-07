@@ -79,8 +79,6 @@ jobs:
               assert "/v1/conversations" in app.openapi()["paths"]
           '
           done
-      - name: Build Docker image
-        run: docker build --tag zellige:ci .
       - name: Retain distribution artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -119,6 +117,54 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sonarqube:
+    name: SonarQube Cloud analysis
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require the analysis credential
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::Missing SONAR_TOKEN. Add an analysis token for zellige-oss to this repository's Actions secrets."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.8"
+          python-version: "3.12"
+      - name: Produce backend coverage for the analyzed revision
+        run: |
+          uv sync --locked --dev --no-install-project --no-build
+          uv run --locked --no-sync --no-build coverage run -m unittest discover -s tests -v
+          uv run --locked --no-sync --no-build coverage xml
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Produce frontend coverage for the analyzed revision
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts
+          vitest_version=$(node -p "require('./node_modules/vitest/package.json').version")
+          npm install --no-save --ignore-scripts "@vitest/coverage-v8@$vitest_version"
+          npm test -- --coverage --coverage.reporter=lcov
+      - name: Analyze the revision and check its quality gate
+        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        with:
+          args: -Dsonar.branch.name=main
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
   required:
     name: Pilot CI required
     if: ${{ always() && github.event.pull_request.merged == true }}
@@ -144,6 +190,6 @@ jobs:
     name: Deploy validated pilot
     needs: [required]
     if: github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'minimal-mvp-chat-web')
-    uses: ./.github/workflows/deploy-pilot.yml
+    uses: ./.github/workflows/cd.yml
     secrets:
       VERCEL_REPOSITORY_TOKEN: ${{ secrets.VERCEL_TOKEN }}
