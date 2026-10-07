@@ -20,17 +20,17 @@ publish the deployment workflows alone against the initial `main`, which does
 not contain their application files. Manual workflow dispatch becomes available
 once the workflow exists on the default branch.
 
-SonarQube is temporarily disabled in the pilot workflow. Its existing project
-configuration is retained for later reactivation, but no Sonar credentials or
-quality gate are required for CI or deployment.
+The `SonarQube Cloud analysis` job in the same workflow runs only for PRs merged
+into `main`. It is not part of `Pilot CI required`, so deployment does not wait
+for Sonar.
 
 ## Checks
 
 - **Web lint, types, tests and build** installs from `web/package-lock.json`
   with `npm ci`, then checks ESLint, TypeScript, Vitest, and the Vite build.
 - **Build** checks the dependency lock, builds the Python source distribution
-  and wheel, verifies both can create a database from their packaged migrations,
-  and builds the Docker image. Python distributions are retained for seven days
+  and wheel, verifies both can create a database from their packaged migrations.
+  Python distributions are retained for seven days
   as workflow artifacts.
 - **Tests** runs the API suite with line and branch coverage, then retains
   `coverage.xml` for seven days.
@@ -41,7 +41,7 @@ commit hashes. Validation has read-only repository permissions. Concurrency
 cancellation is disabled so newer pushes do not interrupt an active run.
 Distribution and Python coverage artifacts are retained for seven days.
 
-## Future SonarQube setup (inactive)
+## SonarQube setup
 
 Use the free OSS plan for this public, Apache-2.0-licensed project. It includes
 public-project branch and PR analysis. Confirm the selected plan during
@@ -109,7 +109,6 @@ uv run --locked coverage run -m unittest discover -s tests -v
 uv run --locked coverage xml
 uv run --locked coverage report
 uv build --no-sources
-docker build --tag zellige:ci .
 cd web
 npm ci
 npm run lint
