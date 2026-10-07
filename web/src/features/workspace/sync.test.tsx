@@ -82,6 +82,23 @@ describe("manual cursor synchronization", () => {
     expect(result.current.hasMoreChanges).toBe(false);
   });
 
+  it.each(["completed", "failed"] as const)("refreshes running and %s transitions only after manual synchronization", async (terminal) => {
+    const { api, result } = await setup();
+    await act(async () => { result.current.setProfileId(result.current.profiles[0].version.id); });
+    await act(async () => { expect(await result.current.queueRun()).toBe(true); });
+    expect(result.current.thread?.runs[0].status).toBe("queued");
+    for (const [index, status] of (["running", terminal] as const).entries()) {
+      api.runs[0].status = status;
+      api.runs[0].result = status === "completed" ? { summary: "Done" }
+        : status === "failed" ? { error: "Failed" } : null;
+      expect(result.current.thread?.runs[0].status).not.toBe(status);
+      changesPages(api, page([change("run", "conv-1", 12 + index)], 12 + index));
+      await act(async () => { expect(await result.current.readChanges()).toBe(true); });
+      expect(result.current.thread?.runs[0].status).toBe(status);
+      expect(result.current.thread?.runs[0].result).toEqual(api.runs[0].result);
+    }
+  });
+
   it("refreshes the list for another conversation without replacing the selected thread", async () => {
     const { api, result } = await setup();
     const thread = result.current.thread;

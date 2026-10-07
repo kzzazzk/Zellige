@@ -35,6 +35,21 @@ class OpenAPIExportTestCase(unittest.TestCase):
         ):
             self.assertEqual(json.loads(schema_json())["openapi"], "3.1.0")
 
+    def test_worker_contract(self) -> None:
+        schema = json.loads(schema_json())
+        claim = schema["paths"]["/v1/runner/runs/claim"]["post"]
+        finish = schema["paths"]["/v1/runner/runs/{run_id}/finish"]["post"]
+        self.assertEqual(claim["security"], [{"BearerAuth": []}])
+        self.assertEqual(finish["security"], [{"BearerAuth": []}])
+        self.assertIn("200", claim["responses"])
+        self.assertIn("409", finish["responses"])
+        schemas = schema["components"]["schemas"]
+        self.assertEqual(schemas["ClaimRunRequest"]["properties"]["harness"]["minLength"], 1)
+        self.assertEqual(set(schemas["RunWorkPackage"]["required"]),
+                         {"run", "runtime_profile_version", "items", "context_pack_versions"})
+        self.assertEqual(schemas["FinishRunRequest"]["properties"]["status"]["enum"], ["completed", "failed"])
+        self.assertEqual(schemas["FinishRunRequest"]["required"], ["status", "result"])
+
     def test_append_head_is_required_and_nullable(self) -> None:
         append = json.loads(schema_json())["components"]["schemas"]["AppendItemRequest"]
         self.assertIn("expected_head_item_id", append["required"])

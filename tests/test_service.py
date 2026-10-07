@@ -378,6 +378,8 @@ class APITestCase(unittest.TestCase):
                 "createContextPack",
                 "createContextPackVersion",
                 "createRun",
+                "claimRun",
+                "finishRun",
                 "getChanges",
                 "putArtifact",
             },

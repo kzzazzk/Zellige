@@ -186,7 +186,7 @@ export function apiFixture() {
           id: `profilev-${profiles.length + 1}`,
           runtime_profile_id: `profile-${profiles.length + 1}`,
           version: 1,
-          definition: {},
+          definition: body.definition as Profile["version"]["definition"],
           created_at: 1,
         },
       };
@@ -226,6 +226,7 @@ export function apiFixture() {
   return {
     fetchMock,
     conversations,
+    profiles,
     items,
     branches,
     runs,
