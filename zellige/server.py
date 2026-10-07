@@ -475,7 +475,7 @@ def build_app(data_dir: Path, token: str, web_dir: Path | None = None) -> FastAP
     migrations_dir = (
         packaged_migrations
         if packaged_migrations.is_dir()
-        else project_root / "migrations"
+        else project_root / "db" / "migrations"
     )
     database = Database(data_dir / "zellige.sqlite3", migrations_dir)
     service = ZelligeService(database, data_dir / "blobs")
