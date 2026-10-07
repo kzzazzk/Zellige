@@ -1,11 +1,5 @@
 import type { Client } from "./client";
-import type {
-  Branch,
-  Conversation,
-  ConversationPage,
-  History,
-  Item,
-} from "./types";
+import type { Conversation, QueryParameters, RequestBody, ResponseBody } from "./types";
 
 export function listConversations(
   client: Client,
@@ -13,17 +7,15 @@ export function listConversations(
   query = "",
   offset = 0,
 ) {
-  const params = new URLSearchParams({
-    archived: String(archived),
-    query,
-    offset: String(offset),
-    limit: "50",
-  });
-  return client.request<ConversationPage>(`/v1/conversations?${params}`);
+  const queryParams = { archived, query, offset, limit: 50 } satisfies QueryParameters<"listConversations">;
+  const params = new URLSearchParams(
+    Object.entries(queryParams).map(([key, value]) => [key, String(value)]),
+  );
+  return client.request<ResponseBody<"listConversations">>(`/v1/conversations?${params}`);
 }
 
 export function getConversation(client: Client, id: string) {
-  return client.request<Conversation>(
+  return client.request<ResponseBody<"getConversation">>(
     `/v1/conversations/${encodeURIComponent(id)}`,
   );
 }
@@ -31,22 +23,20 @@ export function getConversation(client: Client, id: string) {
 export function updateConversation(
   client: Client,
   conversation: Conversation,
-  change: { title?: string; archived?: boolean },
+  change: Pick<RequestBody<"updateConversation">, "title" | "archived">,
 ) {
-  return client.request<Conversation>(
+  const body = {
+    ...change,
+    expected_updated_at: conversation.updated_at,
+  } satisfies RequestBody<"updateConversation">;
+  return client.request<ResponseBody<"updateConversation">>(
     `/v1/conversations/${encodeURIComponent(conversation.id)}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({
-        ...change,
-        expected_updated_at: conversation.updated_at,
-      }),
-    },
+    { method: "PATCH", body: JSON.stringify(body) },
   );
 }
 
 export function listBranches(client: Client, id: string) {
-  return client.request<{ branches: Branch[] }>(
+  return client.request<ResponseBody<"listBranches">>(
     `/v1/conversations/${encodeURIComponent(id)}/branches`,
   );
 }
@@ -57,19 +47,18 @@ export function createBranch(
   name: string,
   head: string | null,
 ) {
-  return client.request<Branch>(
+  const body = { name, head_item_id: head } satisfies RequestBody<"createBranch">;
+  return client.request<ResponseBody<"createBranch">>(
     `/v1/conversations/${encodeURIComponent(id)}/branches`,
-    {
-      method: "POST",
-      body: JSON.stringify({ name, head_item_id: head }),
-    },
+    { method: "POST", body: JSON.stringify(body) },
   );
 }
 
 export function createConversation(client: Client, title: string) {
-  return client.request<{ conversation: Conversation; branch: Branch }>(
+  const body = { title } satisfies RequestBody<"createConversation">;
+  return client.request<ResponseBody<"createConversation">>(
     "/v1/conversations",
-    { method: "POST", body: JSON.stringify({ title }) },
+    { method: "POST", body: JSON.stringify(body) },
   );
 }
 
@@ -78,7 +67,7 @@ export function getHistory(
   conversationId: string,
   branchId: string,
 ) {
-  return client.request<History>(
+  return client.request<ResponseBody<"getBranchHistory">>(
     `/v1/conversations/${encodeURIComponent(conversationId)}/branches/${encodeURIComponent(branchId)}/history`,
   );
 }
@@ -90,19 +79,17 @@ export function appendMessage(
   expectedHeadItemId: string | null,
   text: string,
 ) {
-  return client.request<Item>(
-    `/v1/conversations/${encodeURIComponent(conversationId)}/branches/${encodeURIComponent(branchId)}/items`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        expected_head_item_id: expectedHeadItemId,
-        kind: "message",
-        payload: {
-          type: "message",
-          role: "user",
-          content: [{ type: "text", text }],
-        },
-      }),
+  const body = {
+    expected_head_item_id: expectedHeadItemId,
+    kind: "message",
+    payload: {
+      type: "message",
+      role: "user",
+      content: [{ type: "text", text }],
     },
+  } satisfies RequestBody<"appendItem">;
+  return client.request<ResponseBody<"appendItem">>(
+    `/v1/conversations/${encodeURIComponent(conversationId)}/branches/${encodeURIComponent(branchId)}/items`,
+    { method: "POST", body: JSON.stringify(body) },
   );
 }

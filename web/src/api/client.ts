@@ -1,11 +1,7 @@
-import { ApiError, type ApiResult } from "./types";
+import { ApiError, type ApiResult, type ErrorResponse } from "./types";
 
 type ErrorBody = {
-  error?: {
-    code?: string;
-    message?: string;
-    details?: Record<string, unknown>;
-  };
+  error?: Partial<ErrorResponse["error"]>;
 };
 
 export function createClient(getToken: () => string) {

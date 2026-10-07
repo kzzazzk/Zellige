@@ -1,7 +1,7 @@
 import type { Item } from "../../api/types";
 
 export function messageText(item: Item): string {
-  if (!Array.isArray(item.payload.content))
+  if (!("content" in item.payload) || !Array.isArray(item.payload.content))
     return JSON.stringify(item.payload, null, 2);
   return item.payload.content
     .map((block: unknown) => {

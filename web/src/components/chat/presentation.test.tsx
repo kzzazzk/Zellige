@@ -7,17 +7,19 @@ import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageComposer } from "./MessageComposer";
 
 const item: Item = {
-  id: "message-1", parent_item_id: null, kind: "message", created_at: 1000000,
-  payload: { role: "user", content: [{ type: "text", text: "Hola" }] },
+  id: "message-1", conversation_id: "conversation-1", parent_item_id: null,
+  run_id: null, kind: "message", payload_schema_version: 1, created_at: 1000000,
+  payload: { type: "message", role: "user", content: [{ type: "text", text: "Hola" }] },
 };
 
 describe("chat presentation", () => {
   it("formats content blocks and falls back to payload JSON", () => {
     expect(messageText(item)).toBe("Hola");
+    // Malformed remote payloads intentionally exercise the existing display fallbacks.
     expect(messageText({ ...item, payload: { content: [
       { type: "text", text: "Text" }, { type: "image", artifact_id: "asset" }, { type: "file" },
-    ] } })).toBe("Text\n[image: asset]\n[file: adjunto]");
-    expect(messageText({ ...item, payload: { result: true } })).toBe(JSON.stringify({ result: true }, null, 2));
+    ] } as unknown as Item["payload"] })).toBe("Text\n[image: asset]\n[file: adjunto]");
+    expect(messageText({ ...item, payload: { result: true } as unknown as Item["payload"] })).toBe(JSON.stringify({ result: true }, null, 2));
   });
 
   it("keeps message callbacks, busy controls and clipboard feedback", async () => {

@@ -1,49 +1,32 @@
-export type Branch = {
-  id: string;
-  conversation_id: string;
-  name: string;
-  head_item_id: string | null;
-};
+import type { components, operations } from "./generated/schema";
 
-export type Item = {
-  id: string;
-  parent_item_id: string | null;
-  kind: "message" | "tool_call" | "tool_result" | "activity" | "artifact";
-  payload: Record<string, unknown>;
-  created_at: number;
-};
+// Stable names for consumers; the backend owns every wire field.
+export type Branch = components["schemas"]["Branch"];
+export type Item = components["schemas"]["Item"];
+export type History = components["schemas"]["BranchHistoryResponse"];
+export type Run = components["schemas"]["Run"];
+export type Profile = components["schemas"]["CreateRuntimeProfileResponse"];
+export type Change = components["schemas"]["Change"];
+export type Changes = components["schemas"]["ChangesResponse"];
+export type Conversation = components["schemas"]["Conversation"];
+export type ConversationPage = components["schemas"]["ConversationListResponse"];
+export type ErrorResponse = components["schemas"]["ErrorResponse"];
 
-export type History = { branch: Branch; items: Item[] };
+type JsonContent<T> = T extends { content: { "application/json": infer Body } }
+  ? Body
+  : never;
 
-export type Run = {
-  id: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  input_head_item_id: string | null;
-  runtime_profile_version_id: string;
-  context_pack_version_ids: string[];
-  created_at: number;
-};
+export type ResponseBody<Id extends keyof operations> = JsonContent<
+  operations[Id]["responses"][keyof operations[Id]["responses"] & (200 | 201)]
+>;
+export type RequestBody<Id extends keyof operations> = JsonContent<
+  operations[Id] extends { requestBody: infer Body } ? Body : never
+>;
+export type QueryParameters<Id extends keyof operations> = NonNullable<
+  operations[Id]["parameters"]["query"]
+>;
 
-export type Profile = {
-  runtime_profile: { id: string; name: string; description: string | null };
-  version: { id: string; version: number; definition: Record<string, unknown> };
-};
-
-export type Change = {
-  seq: number;
-  conversation_id: string | null;
-  entity_type: string;
-  entity_id: string;
-  operation: "upsert" | "delete";
-  data: Record<string, unknown>;
-};
-
-export type Changes = {
-  changes: Change[];
-  next_cursor: number;
-  has_more: boolean;
-};
-
+// Transport metadata and errors remain handwritten.
 export type ApiResult<T> = { status: number; data: T };
 
 export class ApiError extends Error {
@@ -51,22 +34,9 @@ export class ApiError extends Error {
     message: string,
     readonly status: number | null,
     readonly code: string | null = null,
-    readonly details: Record<string, unknown> | null = null,
+    readonly details: ErrorResponse["error"]["details"] = null,
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
-export type Conversation = {
-  id: string;
-  title: string;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-  archived_at: number | null;
-};
-
-export type ConversationPage = {
-  conversations: Conversation[];
-  has_more: boolean;
-};

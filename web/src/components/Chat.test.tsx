@@ -4,12 +4,20 @@ import type { Thread } from "../features/workspace/types";
 import { Chat } from "./Chat";
 
 function thread(id = "conversation", branchId = "main"): Thread {
-  const branch = { id: branchId, conversation_id: id, name: branchId, head_item_id: "child" };
+  const branch = {
+    id: branchId, conversation_id: id, name: branchId, head_item_id: "child",
+    created_at: 0, updated_at: 0,
+  };
   return {
     conversation: { id, title: id, created_at: 0, updated_at: 0, deleted_at: null, archived_at: null },
     branch,
     branches: [branch],
-    items: [{ id: "child", parent_item_id: "root", kind: "message", payload: { role: "user", content: [{ type: "text", text: "Original" }] }, created_at: 0 }],
+    items: [{
+      id: "child", conversation_id: id, parent_item_id: "root", run_id: null,
+      kind: "message", payload_schema_version: 1,
+      payload: { type: "message", role: "user", content: [{ type: "text", text: "Original" }] },
+      created_at: 0,
+    }],
     runs: [],
   };
 }
