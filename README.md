@@ -108,7 +108,7 @@ focused state owners and explicit request workflows live in
 `web/src/components/` renders the sidebar, chat, settings and optional inspector
 with explicit view/action props. Chat presentation lives in `components/chat/`.
 `web/src/storage/session.ts` keeps the unchanged tab-scoped storage contract.
-See [frontend Phase 1 ownership and behavior](docs/development/frontend-phase-1.md).
+See [frontend Phase 1 ownership and behavior](openspec/development/frontend-phase-1.md).
 Styling uses Tailwind
 through the Vite plugin. `web/src/components/ui/` contains shadcn/ui's Base UI
 primitives (base-mira), with its MIT notice in `web/public/shadcn-LICENSE.txt`.
@@ -166,4 +166,4 @@ paths. Vite supports this. **The current production Starlette `StaticFiles`
 mount does not provide arbitrary-path SPA fallback; production deep-link refresh
 is not delivered by this phase.** Backend/deployment fallback is a deferred
 prerequisite, not a frontend routing fix. See
-[Frontend Phase 2](docs/development/frontend-phase-2.md) for ownership and checks.
+[Frontend Phase 2](openspec/development/frontend-phase-2.md) for ownership and checks.
