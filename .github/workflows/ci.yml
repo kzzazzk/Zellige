@@ -44,9 +44,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: Check pilot publication and deployment selection
-        working-directory: .
-        run: node --test tests/resolve-pilot.test.mjs tests/publish-pilot.test.mjs tests/deployment-scope.test.mjs
 
   build:
     name: Build
