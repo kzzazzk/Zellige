@@ -41,8 +41,6 @@ in configuration, not source. No SQLite data or demo passwords are copied locall
 - The target must be zellige-demo and the template must belong to that project.
 - Publication is skipped if no pilot files changed since its last labelled release.
 - API failures and failed Vercel builds fail the CD; API payloads are not logged.
-- The local container remains until Google access and the new backend work for
-  the owner. No container removal is performed by this workflow.
 
 The workflow and settings are prepared locally, not yet active on GitHub. Main
 still needs the MVP PR, the environment settings above, and Google configuration.
