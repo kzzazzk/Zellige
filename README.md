@@ -20,7 +20,7 @@ artifact storage.
 
 The data model and its current limits are documented in
 [`openspec/architecture/database.md`](openspec/architecture/database.md). The formal v1
-item contract is [`schemas/item-payload.schema.json`](schemas/item-payload.schema.json).
+item contract is [`db/schemas/item-payload.schema.json`](db/schemas/item-payload.schema.json).
 
 ## Run locally
 
