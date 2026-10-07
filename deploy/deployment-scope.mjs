@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 export function affects(target, paths) {
   const shared = new Set(['deploy/deployment-scope.mjs']);
   const specific = {
-    pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', 'deploy/resolve-pilot.mjs', '.github/workflows/deploy-pilot.yml']),
+    pilot: new Set(['app.py', 'pyproject.toml', 'uv.lock', 'deploy/publish-pilot.mjs', 'deploy/resolve-pilot.mjs', '.github/workflows/cd.yml']),
   };
   const prefixes = { pilot: ['web/', 'zellige/', 'migrations/', 'schemas/'] };
   if (!specific[target]) throw new Error('Unknown deployment target');
