@@ -151,3 +151,19 @@ The public website is maintained independently in
 This is not yet a production server. It has no user/account model, rate limiting,
 TLS termination, runner integration, streaming upload, outbox compaction, backup
 automation, or stable public API guarantee.
+
+### Workspace URLs
+
+The frontend uses clean pathname routes: `/` opens a new workspace (without
+creating a server conversation), and `/chat/:conversationId` requests a concrete
+conversation. The URL takes precedence over the saved conversation; a matching
+saved branch can be restored on refresh. Settings, inspector and naming dialogs
+remain overlays. Browser back/forward navigates conversations without replaying
+writes; unavailable links recover with an accessible notice.
+
+Direct-open/refresh requires the host to serve the SPA entry point at these
+paths. Vite supports this. **The current production Starlette `StaticFiles`
+mount does not provide arbitrary-path SPA fallback; production deep-link refresh
+is not delivered by this phase.** Backend/deployment fallback is a deferred
+prerequisite, not a frontend routing fix. See
+[Frontend Phase 2](openspec/development/frontend-phase-2.md) for ownership and checks.
