@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { affects, pendingChanges, deploymentChanged } from '../deploy/deployment-scope.mjs';
 const old='a'.repeat(40),head='b'.repeat(40);
 test('deploys application changes and rejects unsupported targets',()=>{
-  for(const path of ['web/src/App.tsx', 'zellige/server.py', 'migrations/003_example.sql', 'uv.lock']) assert.equal(affects('pilot',[path]),true);
+  for(const path of ['web/src/App.tsx', 'zellige/server.py', 'db/migrations/003_example.sql', 'uv.lock']) assert.equal(affects('pilot',[path]),true);
   assert.equal(affects('pilot',['docs/note.md','tests/example.test.mjs']),false);
   assert.equal(affects('pilot',['deploy/deployment-scope.mjs']),true);
   assert.throws(()=>affects('marketing',[]),/Unknown deployment target/);
