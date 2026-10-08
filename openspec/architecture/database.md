@@ -55,15 +55,19 @@ The UI pulls changes manually; automatic multi-device sync is not implemented.
 
 `runtime_profiles` are stable identities. Each execution points to an immutable
 `runtime_profile_version`, so changing the definition of “general”, “code”, or
-another profile cannot rewrite history. A run also points to exact immutable
-`context_pack_versions` in a defined order. It captures `input_head_item_id`
+another profile cannot rewrite history. A run captures `input_head_item_id`
 when queued, rather than deriving its input later from a branch head that may
 have moved. `created_at`, `started_at`, and `completed_at` remain distinct; a
 queued run has not started.
 
+Context packs were removed from the application on 2026-10-06: harnesses
+manage their own context, and user memory will be designed with the personal
+agent. Their tables (`context_packs`, `context_pack_versions`,
+`run_context_packs`) remain in migration 001 but no code reads or writes them.
+
 A `provider_session` is optional. Losing it can prevent native resumption but
 must not remove the canonical conversation, items, run request, selected profile
-version, context versions, or artifacts. Provider switching during an active run
+version, or artifacts. Provider switching during an active run
 is outside the v1 PoC and should be rejected by the future runner layer.
 
 ## Item payload contract
@@ -71,9 +75,10 @@ is outside the v1 PoC and should be rejected by the future runner layer.
 `items.payload_json` is governed by
 [`db/schemas/item-payload.schema.json`](../../db/schemas/item-payload.schema.json),
 JSON Schema 2020-12, version 1. The envelope has a `type` discriminator equal to
-the relational `items.kind`. The Pydantic models in `zellige/api_models.py` are
-the source of truth for request validation, the OpenAPI components, and the
-standalone JSON Schema. A test regenerates the latter and rejects drift.
+the relational `items.kind`. The Pydantic models in
+`zellige/domain/model/payload.py` are the source of truth for request validation,
+the OpenAPI components, and the standalone JSON Schema. A test regenerates the
+latter and rejects drift.
 Supported kinds are:
 
 - `message`: role plus ordered text/artifact content blocks.

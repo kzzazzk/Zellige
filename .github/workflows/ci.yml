@@ -63,7 +63,7 @@ jobs:
           from zellige.server import build_app
           with TemporaryDirectory() as directory:
               app = build_app(Path(directory), "distribution-test-token")
-              assert app.state.service.database.quick_check() == "ok"
+              assert app.state.database.quick_check() == "ok"
               assert "/v1/conversations" in app.openapi()["paths"]
           '
           done
@@ -91,6 +91,12 @@ jobs:
           python-version: "3.12"
       - name: Install locked development dependencies
         run: uv sync --locked --dev
+      - name: Check backend lint and formatting
+        run: |
+          uv run --locked ruff check .
+          uv run --locked ruff format --check .
+      - name: Check backend type contracts
+        run: uv run --locked mypy
       - name: Run tests with branch coverage
         run: uv run --locked coverage run -m unittest discover -s tests -v
       - name: Export coverage report

@@ -1,14 +1,8 @@
-from __future__ import annotations
-
 import contextlib
 import sqlite3
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
-
-
-def now_us() -> int:
-    return time.time_ns() // 1_000
 
 
 class Database:
@@ -54,7 +48,10 @@ class Database:
             applied = set()
             if exists:
                 applied = {
-                    row[0] for row in connection.execute("SELECT version FROM schema_migrations")
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT version FROM schema_migrations"
+                    )
                 }
 
             for path in sorted(self.migrations_dir.glob("[0-9][0-9][0-9]_*.sql")):
@@ -66,7 +63,7 @@ class Database:
                     "BEGIN IMMEDIATE;\n"
                     + script
                     + f"\nINSERT INTO schema_migrations(version, applied_at) "
-                    f"VALUES ({version}, {now_us()});\nCOMMIT;"
+                    f"VALUES ({version}, {time.time_ns() // 1_000});\nCOMMIT;"
                 )
         finally:
             connection.close()
